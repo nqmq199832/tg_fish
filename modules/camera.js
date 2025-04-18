@@ -1,0 +1,1 @@
+// camera.js content goes here
